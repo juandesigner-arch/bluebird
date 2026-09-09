@@ -19,3 +19,16 @@ Abre `index.html` directamente o sirve la carpeta con:
 python3 -m http.server 4174
 ```
 
+## Deploy
+
+Hostinger puede usar:
+
+```bash
+npm run build
+```
+
+Directorio publico:
+
+```text
+.
+```
