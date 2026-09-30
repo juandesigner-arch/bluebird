@@ -2,6 +2,11 @@
 
 Mini app de gastos personales en COP.
 
+## Versiones
+
+- `/` — Blue Bird, versión visual completa.
+- `/lite/` — Mini Gastos Lite, beta pública plana y sin gráficas.
+
 Es una app web estatica: se puede subir a GitHub y desplegar en Hostinger publicando esta carpeta.
 
 ## Archivos principales

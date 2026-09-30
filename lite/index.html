@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>Mini Gastos Lite</title>
+    <link rel="stylesheet" href="styles.css?v=lite-3">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="app" aria-live="polite"></section>
+
+      <nav class="bottom-nav" aria-label="Navegacion principal">
+        <button class="nav-button active" data-view="home" type="button">
+          <span aria-hidden="true">🏠</span>
+          <small>Inicio</small>
+        </button>
+        <button class="nav-button" data-view="expenses" type="button">
+          <span aria-hidden="true">☷</span>
+          <small>Gastos</small>
+        </button>
+        <button class="nav-button" data-view="history" type="button">
+          <span aria-hidden="true">🗓️</span>
+          <small>Historial</small>
+        </button>
+        <button class="nav-button nav-add" data-view="add" type="button">
+          <span aria-hidden="true">＋</span>
+          <small>Agregar</small>
+        </button>
+      </nav>
+    </main>
+
+    <script src="app.js?v=lite-3"></script>
+  </body>
+</html>
