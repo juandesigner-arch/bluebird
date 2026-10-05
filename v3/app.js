@@ -1,8 +1,8 @@
-import { parseAmount, parseDecimal } from "./money.js?v=v3-app-4";
-import { sections, monthNames } from "./data.js?v=v3-app-4";
-import * as calculations from "./calculations.js?v=v3-app-4";
-import { createAccount } from "./account.js?v=v3-app-4";
-import { createStore, storageKey } from "./state.js?v=v3-app-4";
+import { parseAmount, parseDecimal } from "./money.js?v=v3-app-5";
+import { sections, monthNames } from "./data.js?v=v3-app-5";
+import * as calculations from "./calculations.js?v=v3-app-5";
+import { createAccount } from "./account.js?v=v3-app-5";
+import { createStore, storageKey } from "./state.js?v=v3-app-5";
 
 let account = null;
 let store = createStore(() => window.localStorage);
@@ -23,6 +23,7 @@ const allCurrentItems = (...args) => calculations.allCurrentItems(state, ...args
 
 const elements = {
   appRoot: document.querySelector("#appRoot"),
+  appHeader: document.querySelector("#appHeader"),
   splash: document.querySelector("#splashScreen"),
   manifest: document.querySelector("#manifestOverlay"),
   manifestClose: document.querySelector("#manifestClose"),
@@ -37,6 +38,14 @@ elements.manifestClose?.addEventListener("click", () => {
 });
 
 elements.appRoot.addEventListener("input", (event) => {
+  const nameInput = event.target.closest("[data-entry-name]");
+  if (nameInput) {
+    if (prepareMonth()) { saveState(); updateLiveDetail(); return; }
+    const key = nameInput.dataset.entryName, index = Number(nameInput.dataset.index);
+    if (!Number.isInteger(index) || index < 0 || index >= (state.entries[key] || []).length) return;
+    (state.entryNames[key] ||= state.entries[key].map(() => ""))[index] = nameInput.value.slice(0, 60);
+    saveState(); return;
+  }
   const rate = event.target.closest("[data-rate]");
   if (rate) {
     const value = parseDecimal(rate.value);
@@ -95,7 +104,7 @@ elements.appRoot.addEventListener("submit", (event) => {
   createCustomExpense(form);
 });
 
-elements.appRoot.addEventListener("click", (event) => {
+document.querySelector(".phone-shell").addEventListener("click", (event) => {
   const entryAction = event.target.closest("[data-edit-entry], [data-remove-entry], [data-cancel-entry]");
   if (entryAction) { handleEntryAction(entryAction); return; }
   const category = event.target.closest("[data-open-section]");
@@ -173,6 +182,12 @@ function render(options = { updateInputs: true }) {
   if (view === "monthLog") renderMonthLog();
   if (view === "profile") renderProfile();
 
+  const header = elements.appRoot.querySelector("header");
+  elements.appHeader.replaceChildren(...(header ? [header] : []));
+  if (view === "home") {
+    const copy = elements.appRoot.querySelector(".home-copy");
+    if (copy) elements.appHeader.append(copy);
+  }
   updateNav();
   updateDynamicValues(options);
 }
@@ -882,7 +897,7 @@ function renderEntryInputs(item) {
       <button type="button" class="entry-cancel" data-cancel-entry="${item.key}" hidden>Cancelar</button>
     </form>
     <details class="entry-history"><summary><span>${entries.length} ${entries.length === 1 ? "registro" : "registros"}</span><strong>${money(entriesMonthlyValue(item))}</strong><span aria-hidden="true">⌄</span></summary>
-      <div class="entry-records">${entries.length ? entries.map((value, index) => `<div class="entry-record"><button type="button" data-edit-entry="${item.key}" data-index="${index}" aria-label="Editar registro ${index + 1}"><span>Registro ${index + 1}</span><strong>${money(value)}</strong></button><button class="entry-remove" type="button" data-remove-entry="${item.key}" data-index="${index}" aria-label="Eliminar registro ${index + 1}">×</button></div>`).join("") : '<p class="empty-summary">Agrega el primer registro con ＋.</p>'}</div>
+      <div class="entry-records">${entries.length ? entries.map((value, index) => `<div class="entry-record"><input class="entry-name" data-entry-name="${item.key}" data-index="${index}" aria-label="Nombre del registro ${index + 1}" placeholder="Registro ${index + 1}" maxlength="60" value="${escapeHtml(state.entryNames[item.key]?.[index] || "")}"><button class="entry-amount" type="button" data-edit-entry="${item.key}" data-index="${index}" aria-label="Editar valor del registro ${index + 1}"><strong>${money(value)}</strong></button><button class="entry-remove" type="button" data-remove-entry="${item.key}" data-index="${index}" aria-label="Eliminar registro ${index + 1}">×</button></div>`).join("") : '<p class="empty-summary">Agrega el primer registro con ＋.</p>'}</div>
     </details>
     <p class="entry-feedback" role="status" aria-live="polite"></p>
   </div>`;
@@ -1132,7 +1147,7 @@ function updateAddForm() {
   form.elements.exchangeRate.setCustomValidity("");
   form.querySelector("[data-minimum-label]").textContent = `Cuota mínima · ${usd ? "USD" : "COP"}`;
   form.querySelector("[data-principal-label]").textContent = `Deuda total · ${usd ? "USD" : "COP"}`;
-  elements.appRoot.querySelector("[data-add-heading]").textContent = isDebt ? "Nueva deuda" : "Nuevo gasto";
+  document.querySelector("[data-add-heading]").textContent = isDebt ? "Nueva deuda" : "Nuevo gasto";
   form.querySelector("[data-create-label]").textContent = isDebt ? "Crear deuda" : "Crear gasto";
 }
 
@@ -1155,6 +1170,8 @@ function commitEntry(form) {
   const entries = state.entries[key] ||= [];
   if (!rolled && editing !== undefined && Number(editing) < entries.length) entries[Number(editing)] = value;
   else entries.push(value);
+  const names = state.entryNames[key] ||= [];
+  while (names.length < entries.length) names.push("");
   saveState(); refreshEntryModule(key, editing !== undefined && !rolled ? "Registro actualizado" : "Registro agregado");
 }
 function handleEntryAction(button) {
@@ -1164,11 +1181,11 @@ function handleEntryAction(button) {
   if (!Number.isInteger(index) || index < 0 || index >= entries.length) return;
   if (button.hasAttribute("data-remove-entry")) {
     if (prepareMonth()) { saveState(); updateLiveDetail(); return; }
-    entries.splice(index, 1); saveState(); refreshEntryModule(key, "Registro eliminado", true); return;
+    entries.splice(index, 1); state.entryNames[key]?.splice(index, 1); saveState(); refreshEntryModule(key, "Registro eliminado", true); return;
   }
   const form = elements.appRoot.querySelector(`[data-entry-form="${key}"]`);
   form.dataset.editing = String(index); form.elements.entryAmount.value = plainMoney(entries[index]);
-  form.querySelector("label > span").textContent = `Editar registro ${index + 1} · COP`;
+  form.querySelector("label > span").textContent = `Editar ${state.entryNames[key]?.[index]?.trim() || `registro ${index + 1}`} · COP`;
   form.querySelector('[type="submit"]').textContent = "✓";
   form.querySelector('[type="submit"]').setAttribute("aria-label", "Guardar registro");
   form.querySelector("[data-cancel-entry]").hidden = false;
@@ -1191,7 +1208,7 @@ fitViewport();
 account = createAccount({
   storageKey,
   readState: () => state,
-  refreshProfile: () => { if (state.view === "profile") renderProfile(); },
+  refreshProfile: () => { if (state.view === "profile") render(); },
   switchAccount: (id) => {
     store = createStore(() => window.localStorage, () => new Date(), { key: id ? `${storageKey}:${id}` : storageKey });
     state = store.state; state.view = "home"; lastStorageError = ""; store.save(); render(); reportStorageError();

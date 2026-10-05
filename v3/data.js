@@ -152,6 +152,7 @@ export const defaultState = {
   selectedLogKey: "",
   values: defaultValues,
   entries: defaultEntries,
+  entryNames: {},
   customItems: {},
   itemLabels: {},
   removedItems: { crediagilMin: true },

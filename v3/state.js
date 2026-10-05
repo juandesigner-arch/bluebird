@@ -1,8 +1,8 @@
-import { sections, monthNames, defaultState } from "./data.js?v=v3-app-4";
-import { expenseSections, expenseKindTotals, debtStats, pendingPayments, expenseItemLog, sectionItems, monthlyValue, itemLabel, isChecked, debtCurrency, currencyRate } from "./calculations.js?v=v3-app-4";
+import { sections, monthNames, defaultState } from "./data.js?v=v3-app-5";
+import { expenseSections, expenseKindTotals, debtStats, pendingPayments, expenseItemLog, sectionItems, monthlyValue, itemLabel, isChecked, debtCurrency, currencyRate } from "./calculations.js?v=v3-app-5";
 
 export const storageKey = "blue-bird-v3-expenses-v1";
-const schemaVersion = 3;
+const schemaVersion = 4;
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const record = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const safeKey = (key) => /^[a-zA-Z0-9_-]+$/.test(key) && !["__proto__", "prototype", "constructor"].includes(key);
@@ -55,7 +55,12 @@ export function normalizeState(raw, now) {
       if (field === "itemLabels" && typeof value === "string") state.itemLabels[key] = value;
     }
   }
-  for (const key of Object.keys(state.entries)) state.entries[key] = state.entries[key].filter((entry) => entry > 0);
+  for (const key of Object.keys(state.entries)) {
+    const originalEntries = Array.isArray(source.entries?.[key]) ? source.entries[key] : state.entries[key];
+    const names = Array.isArray(source.entryNames?.[key]) ? source.entryNames[key] : [];
+    state.entryNames[key] = originalEntries.flatMap((value, index) => amount(value) > 0 ? [text(names[index]).trim().slice(0, 60)] : []);
+    state.entries[key] = state.entries[key].filter((entry) => entry > 0);
+  }
   const used = new Set(sections.flatMap((section) => section.items.map((item) => item.key)));
   for (const section of sections) {
     const items = source.customItems?.[section.id];
@@ -108,7 +113,7 @@ export function monthSnapshot(state, key, now) {
     snapshot: { sections: sections.map((section) => ({ id: section.id, title: section.title, autoSectionChecked: Boolean(section.autoSectionChecked), items: sectionItems(state, section).map((item) => ({
       ...clone(item), label: itemLabel(state, item), value: amount(state.values[item.key]), currency: debtCurrency(item), exchangeRate: currencyRate(state, item),
       ...(item.debtTotalKey ? { debtTotal: amount(state.values[item.debtTotalKey]) } : {}),
-      ...(item.entries ? { entryValues: [...(state.entries[item.key] || [])] } : {}),
+      ...(item.entries ? { entryValues: [...(state.entries[item.key] || [])], entryNames: [...(state.entryNames[item.key] || [])] } : {}),
       checked: isChecked(state, item), monthly: monthlyValue(state, item)
     })) })) }
   };
@@ -155,6 +160,7 @@ export function createStore(storageProvider, clock = () => new Date(), options =
     if (next <= state.activeMonth) return false;
     writeSnapshot(state.activeMonth, now);
     state.checked = {};
+    state.entryNames = {};
     state.entries = Object.fromEntries(Object.keys(state.entries).map((key) => [key, []]));
     state.activeMonth = next;
     return true;

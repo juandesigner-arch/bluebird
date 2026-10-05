@@ -164,3 +164,18 @@ test('account storage namespaces never mutate the guest or another user', () => 
   assert.equal(createStore(db,clock,{key:storageKey+':user-a'}).state.values.rent,456);
   assert.equal(createStore(db,clock,{key:storageKey+':user-b'}).state.values.rent,789);
 });
+
+test('variable record names migrate with amounts and survive reload and month history', () => {
+  let now=at(2026,10);
+  const db=memory(JSON.stringify({activeMonth:'2026-10',entries:{gasoline:[0,100,200]},entryNames:{gasoline:['Unused','Gasolina lunes','Viaje']}}));
+  const store=createStore(db,()=>now);
+  assert.deepEqual(store.state.entries.gasoline,[100,200]);
+  assert.deepEqual(store.state.entryNames.gasoline,['Gasolina lunes','Viaje']);
+  store.state.entries.gasoline.splice(0,1);store.state.entryNames.gasoline.splice(0,1);store.save();
+  const reloaded=createStore(db,()=>now);
+  assert.deepEqual(reloaded.state.entryNames.gasoline,['Viaje']);
+  now=at(2026,11);reloaded.ensureMonth();
+  const row=reloaded.state.yearLogs['2026']['10'].snapshot.sections.find(s=>s.id==='transport').items.find(i=>i.key==='gasoline');
+  assert.deepEqual(row.entryNames,['Viaje']);assert.deepEqual(row.entryValues,[200]);
+  assert.deepEqual(reloaded.state.entryNames,{});
+});

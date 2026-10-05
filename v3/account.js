@@ -1,4 +1,4 @@
-import { authConfig } from './auth-config.js?v=v3-app-4';
+import { authConfig } from './auth-config.js?v=v3-app-5';
 
 // SDK owns token refresh; each data request captures the authenticated account.
 export function createAccount({ switchAccount, readState, refreshProfile, storageKey }) {

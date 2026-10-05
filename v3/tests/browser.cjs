@@ -12,18 +12,24 @@ const assert = require('node:assert/strict');
  for(let i=1;i<=7;i++){await page.locator('[data-entry-form="gasoline"] input').fill(String(i*1000));await page.locator('[data-entry-form="gasoline"] [type="submit"]').click();}
  assert.equal((await data()).entries.gasoline.length,count+7);
  await page.locator('[data-entry-module="gasoline"] summary').click();await page.locator('[data-edit-entry="gasoline"][data-index="0"]').click();await page.locator('[data-entry-form="gasoline"] input').fill('9876');await page.locator('[data-entry-form="gasoline"] [type="submit"]').click();assert.equal((await data()).entries.gasoline[0],9876);
- await page.locator('[data-remove-entry="gasoline"][data-index="0"]').click();assert.equal((await data()).entries.gasoline.length,count+6);
+ await page.locator('[data-entry-name="gasoline"][data-index="0"]').fill('Tanqueo lunes');
+ assert.equal((await data()).entryNames.gasoline[0],'Tanqueo lunes');
+ await page.locator('[data-entry-name="gasoline"][data-index="1"]').fill('Viaje familiar');
+ await page.locator('[data-remove-entry="gasoline"][data-index="0"]').click();
+ assert.equal((await data()).entryNames.gasoline[0],'Viaje familiar');assert.equal((await data()).entries.gasoline.length,count+6);
  await page.screenshot({path:'/tmp/v3-variable.png'});
- await page.reload();await page.locator('.splash-screen.is-hidden').waitFor();assert.equal((await data()).entries.gasoline.length,count+6);
+ await page.reload();await page.locator('.splash-screen.is-hidden').waitFor();assert.equal((await data()).entries.gasoline.length,count+6);assert.equal((await data()).entryNames.gasoline[0],'Viaje familiar');
  await page.locator('[data-view="add"]').click();await page.locator('[name="sectionId"]').selectOption('debt');await page.locator('[name="label"]').fill('Tarjeta USD');await page.locator('[name="currency"]').selectOption('USD');await page.locator('[name="minimum"]').fill('12.50');await page.locator('[name="principal"]').fill('250.75');await page.locator('[name="exchangeRate"]').fill('4000');await page.locator('[data-add-form] [type="submit"]').click();
  let s=await data();let debt=s.customItems.debt.find(i=>i.label==='Tarjeta USD');assert.ok(debt);assert.equal(s.values[debt.key],12.5);assert.equal(s.values[debt.debtTotalKey],250.75);assert.equal(s.currencyRates[debt.key],4000);
  await page.locator(`[data-field="${debt.key}"]`).fill('15,25');await page.locator(`[data-field="${debt.debtTotalKey}"]`).click();assert.equal((await data()).values[debt.key],15.25);
  await page.locator(`[data-rate="${debt.key}"]`).fill('4100');await page.screenshot({path:'/tmp/v3-debt.png'});
  await page.reload();await page.locator('.splash-screen.is-hidden').waitFor();assert.equal((await data()).values[debt.key],15.25);
  await page.locator('[data-view="profile"]').click();await page.locator('[data-account-open]').click();assert.match(await page.locator('dialog').innerText(),/pendiente de activar/);assert.equal(await page.locator('dialog input').count(),0);await page.locator('.account-close').click();
- for(const [width,height] of [[320,568],[430,932],[844,390],[1280,900]]) {await page.setViewportSize({width,height});await page.locator('[data-view="explore"]').click();const b=await page.locator('.bottom-nav').boundingBox();assert.ok(b.y>=0&&b.y+b.height<=height+1);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.locator('#appRoot').evaluate(e=>e.scrollTop=9999);assert.deepEqual(await page.locator('.bottom-nav').boundingBox(),b);}
+ for(const [width,height] of [[320,568],[430,932],[844,390],[1280,900]]) {await page.setViewportSize({width,height});await page.locator('[data-view="explore"]').click();const b=await page.locator('.bottom-nav').boundingBox();const header=await page.locator('#appHeader').boundingBox();assert.ok(b.y>=0&&b.y+b.height<=height+1);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.locator('#appRoot').evaluate(e=>e.scrollTop=9999);assert.deepEqual(await page.locator('.bottom-nav').boundingBox(),b);assert.deepEqual(await page.locator('#appHeader').boundingBox(),header);}
  await page.setViewportSize({width:390,height:844});
  await page.locator('[data-view="explore"]').click();await page.locator('[data-open-section="transport"]').click();
+ await page.locator('#appHeader [data-back]').click();
+ await page.locator('[data-open-section="transport"]').click();
  await page.locator('[data-entry-form="gasoline"] input').fill('321');
  await page.clock.setFixedTime(new Date('2026-11-01T17:00:00Z'));await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
  assert.equal(await page.locator('[data-entry-form="gasoline"] input').inputValue(),'321');
