@@ -157,6 +157,7 @@ export const defaultState = {
   removedItems: { crediagilMin: true },
   yearLogs: {},
   checked: {},
-  migrations: {}
+  migrations: {},
+  currencyRates: {}
 };
 

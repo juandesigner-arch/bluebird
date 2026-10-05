@@ -40,3 +40,11 @@ Directorio publico:
 ```text
 .
 ```
+
+## V3: cuentas y pruebas
+
+V3 incluye navegación fija, registros variables ilimitados y creación de deudas COP/USD con tasa manual. Mantiene el stock y la gráfica original.
+
+El acceso Supabase requiere activar el proyecto siguiendo [la guía](v3/supabase/README.md); hasta entonces el perfil indica que el acceso está pendiente y permite continuar localmente.
+
+Pruebas de datos: `node --test v3/tests/state.test.mjs lite/tests/state.test.mjs`. Las pruebas de navegador (`v3/tests/browser.cjs` y `v3/tests/auth-browser.cjs`) requieren Playwright y el servidor local en puerto 4175. `PLAYWRIGHT_MODULE` permite indicar la ruta del módulo instalado. La segunda prueba simula Supabase: no sustituye la verificación con un proyecto real y sus políticas RLS.

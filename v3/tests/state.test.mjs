@@ -60,7 +60,7 @@ test('December closes once before reset; fixed values, custom items and debt per
   assert.equal(closed.snapshot.sections[0].items[0].checked, true);
   assert.equal(closed.snapshot.sections[0].items[1].entryValues[0], 7);
   assert.equal(s.values.freeInvestmentDebt, 800); assert.equal(total(s), 150);
-  assert.deepEqual(s.checked, {}); assert.deepEqual(s.entries.custom_var, [0,0,0,0,0]);
+  assert.deepEqual(s.checked, {}); assert.deepEqual(s.entries.custom_var, []);
   const frozen = JSON.stringify(closed);
   s.itemLabels.rent = 'Otra casa'; s.values.rent = 200; store.save();
   assert.equal(JSON.stringify(s.yearLogs['2026']['12']), frozen);
@@ -126,4 +126,41 @@ test('shared stock seeds new releases only, preserving original values, checks a
     const lite = createLite(memory(), () => at(2026, 10));
     assert.equal(monthlyTotal(lite.state), total(seeded.state));
   } finally { delete globalThis.BlueBirdStock; }
+});
+
+test('USD debts retain cents, use the per-debt rate, and freeze native currency at month close', async () => {
+  const { parseAmount } = await import('../money.js');
+  assert.equal(parseAmount('12,50', 'USD'), 12.5);
+  assert.equal(parseAmount('1,250.75', 'USD'), 1250.75);
+  assert.equal(parseAmount('1.250,75', 'USD'), 1250.75);
+  assert.equal(parseAmount('120.000', 'COP'), 120000);
+  assert.equal(parseAmount('-12', 'USD'), 0);
+  let now = at(2026, 10);
+  const db = memory(), store = createStore(db, () => now);
+  const debt = {key:'custom_usd',label:'USD',custom:true,type:'fixed',debt:true,currency:'USD',debtTotalKey:'custom_usd_total'};
+  store.state.customItems.debt.push(debt);
+  Object.assign(store.state.values, {custom_usd:12.5,custom_usd_total:250.75});
+  store.state.currencyRates.custom_usd = 4000;
+  assert.equal(monthlyValue(store.state,debt),50000);
+  assert.equal(debtStats(store.state).total,1003000);
+  assert.equal(debtStats(store.state).minimums,50000);
+  assert.equal(debtStats(store.state).remaining,953000);
+  store.save();const reloaded = createStore(db,()=>now);
+  assert.equal(reloaded.state.customItems.debt[0].currency,'USD');
+  assert.equal(monthlyValue(reloaded.state,reloaded.state.customItems.debt[0]),50000);
+  now=at(2026,11);reloaded.ensureMonth();
+  const closed=reloaded.state.yearLogs['2026']['10'];
+  reloaded.state.currencyRates.custom_usd=5000;
+  const item=closed.snapshot.sections.find(s=>s.id==='debt').items.find(i=>i.key==='custom_usd');
+  assert.equal(item.currency,'USD');assert.equal(item.exchangeRate,4000);assert.equal(item.debtTotal,250.75);assert.equal(item.monthly,50000);
+});
+
+test('account storage namespaces never mutate the guest or another user', () => {
+  const db=memory(), clock=()=>at(2026,10);
+  const guest=createStore(db,clock);guest.state.values.rent=123;guest.save();
+  const a=createStore(db,clock,{key:storageKey+':user-a'});a.state.values.rent=456;a.save();
+  const b=createStore(db,clock,{key:storageKey+':user-b'});b.state.values.rent=789;b.save();
+  assert.equal(createStore(db,clock).state.values.rent,123);
+  assert.equal(createStore(db,clock,{key:storageKey+':user-a'}).state.values.rent,456);
+  assert.equal(createStore(db,clock,{key:storageKey+':user-b'}).state.values.rent,789);
 });

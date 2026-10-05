@@ -1,4 +1,4 @@
-import { sections } from "./data.js?v=v3-data-2";
+import { sections } from "./data.js?v=v3-app-4";
 
 export function pendingPayments(state) {
   return sections
@@ -43,7 +43,7 @@ export function expenseSections(state) {
 
 export function monthlyValue(state, item) {
   if (item.entries) return entriesMonthlyValue(state, item);
-  const value = state.values[item.key] || 0;
+  const value = (state.values[item.key] || 0) * currencyRate(state, item);
   if (item.annual) return value / 12;
   return value * (item.monthlyFactor || 1);
 }
@@ -61,8 +61,8 @@ export function entriesMonthlyValue(state, item) {
 export function debtStats(state) {
   const debtSection = sections.find((section) => section.id === "debt");
   const debts = sectionItems(state, debtSection).filter((item) => item.debt);
-  const total = debts.reduce((sum, item) => sum + (state.values[item.debtTotalKey] || 0), 0);
-  const minimums = debts.reduce((sum, item) => sum + (state.values[item.key] || 0), 0);
+  const total = debts.reduce((sum, item) => sum + (state.values[item.debtTotalKey] || 0) * currencyRate(state, item), 0);
+  const minimums = debts.reduce((sum, item) => sum + monthlyValue(state, item), 0);
   const remaining = Math.max(total - minimums, 0);
   const lifePercent = total ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0;
   return { total, minimums, remaining, lifePercent };
@@ -98,4 +98,9 @@ export function sectionItems(state, section) {
 
 export function allCurrentItems(state) {
   return sections.flatMap((section) => sectionItems(state, section));
+}
+
+export function debtCurrency(item) { return item.debt && item.currency === "USD" ? "USD" : "COP"; }
+export function currencyRate(state, item) {
+  return debtCurrency(item) === "USD" ? Number(state.currencyRates?.[item.key] ?? item.exchangeRate ?? 0) : 1;
 }

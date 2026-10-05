@@ -1,9 +1,12 @@
-import { sections, monthNames } from "./data.js?v=v3-data-2";
-import * as calculations from "./calculations.js?v=v3-data-2";
-import { createStore } from "./state.js?v=v3-data-2";
+import { parseAmount, parseDecimal } from "./money.js?v=v3-app-4";
+import { sections, monthNames } from "./data.js?v=v3-app-4";
+import * as calculations from "./calculations.js?v=v3-app-4";
+import { createAccount } from "./account.js?v=v3-app-4";
+import { createStore, storageKey } from "./state.js?v=v3-app-4";
 
-const store = createStore(() => window.localStorage);
-const state = store.state;
+let account = null;
+let store = createStore(() => window.localStorage);
+let state = store.state;
 let lastStorageError = "";
 const expenseKind = calculations.expenseKind;
 const pendingPayments = (...args) => calculations.pendingPayments(state, ...args);
@@ -34,6 +37,13 @@ elements.manifestClose?.addEventListener("click", () => {
 });
 
 elements.appRoot.addEventListener("input", (event) => {
+  const rate = event.target.closest("[data-rate]");
+  if (rate) {
+    const value = parseDecimal(rate.value);
+    rate.setCustomValidity(value > 0 ? "" : "Escribe una tasa mayor que cero.");
+    if (value > 0) { prepareMonth(rate); state.currencyRates[rate.dataset.rate] = value; saveState(); updateLiveDetail(); }
+    return;
+  }
   const input = event.target.closest("[data-field]");
   const entryInput = event.target.closest("[data-entry-key]");
   const labelInput = event.target.closest("[data-label-key]");
@@ -41,7 +51,7 @@ elements.appRoot.addEventListener("input", (event) => {
   if (input || entryInput || labelInput) prepareMonth(event.target);
 
   if (input) {
-    state.values[input.dataset.field] = parseMoney(input.value);
+    state.values[input.dataset.field] = parseAmount(input.value, input.dataset.currency || "COP");
     saveState();
     updateLiveDetail();
   }
@@ -60,12 +70,12 @@ elements.appRoot.addEventListener("input", (event) => {
 });
 
 elements.appRoot.addEventListener("blur", (event) => {
-  if (event.target.matches("[data-field], [data-entry-key], [data-label-key]")) {
-    render({ updateInputs: true });
-  }
+  const input = event.target;
+  if (input.matches("[data-field]")) input.value = fieldValue(state.values[input.dataset.field] || 0, input.dataset.currency);
 }, true);
 
 elements.appRoot.addEventListener("change", (event) => {
+  if (event.target.matches('[name="sectionId"], [name="currency"]')) { updateAddForm(); return; }
   const checkbox = event.target.closest("[data-check]");
   if (!checkbox || checkbox.disabled) return;
   const checked = checkbox.checked;
@@ -76,6 +86,8 @@ elements.appRoot.addEventListener("change", (event) => {
 });
 
 elements.appRoot.addEventListener("submit", (event) => {
+  const entryForm = event.target.closest("[data-entry-form]");
+  if (entryForm) { event.preventDefault(); commitEntry(entryForm); return; }
   const form = event.target.closest("[data-add-form]");
   if (!form) return;
 
@@ -84,6 +96,8 @@ elements.appRoot.addEventListener("submit", (event) => {
 });
 
 elements.appRoot.addEventListener("click", (event) => {
+  const entryAction = event.target.closest("[data-edit-entry], [data-remove-entry], [data-cancel-entry]");
+  if (entryAction) { handleEntryAction(entryAction); return; }
   const category = event.target.closest("[data-open-section]");
   const back = event.target.closest("[data-back]");
   const add = event.target.closest("[data-add-expense]");
@@ -372,7 +386,7 @@ function renderAddExpense() {
     <section class="add-screen">
       <header class="detail-top">
         <button data-back="explore" type="button" aria-label="Volver">‹</button>
-        <h1>Nuevo gasto</h1>
+        <h1 data-add-heading>${selected.id === "debt" ? "Nueva deuda" : "Nuevo gasto"}</h1>
         <span></span>
       </header>
 
@@ -396,7 +410,7 @@ function renderAddExpense() {
           <input name="label" type="text" placeholder="Ej: Veterinario, Curso, Repuesto" required>
         </label>
 
-        <fieldset>
+        <fieldset data-expense-fields>
           <legend>Tipo de gasto</legend>
           <label class="radio-row">
             <input type="radio" name="expenseType" value="fixed" checked>
@@ -404,19 +418,28 @@ function renderAddExpense() {
           </label>
           <label class="radio-row">
             <input type="radio" name="expenseType" value="variable">
-            <span>Variable: slots para registrar varios valores</span>
+            <span>Variable: agrega registros cuando los necesites</span>
           </label>
         </fieldset>
 
-        <label>
+        <label data-initial-field>
           <span>Valor inicial</span>
           <input name="initialValue" type="text" inputmode="numeric" placeholder="0">
         </label>
 
-        <button class="cozy-button" type="submit">Crear gasto</button>
+        <div class="debt-create-fields" data-debt-fields hidden>
+          <label><span>Moneda</span><select name="currency"><option value="COP">Pesos colombianos · COP</option><option value="USD">Dólares · USD</option></select></label>
+          <div class="debt-create-amounts">
+            <label><span data-minimum-label>Cuota mínima · COP</span><input name="minimum" type="text" inputmode="numeric" placeholder="0" required></label>
+            <label><span data-principal-label>Deuda total · COP</span><input name="principal" type="text" inputmode="numeric" placeholder="0" required></label>
+          </div>
+          <label data-exchange-field hidden><span>1 USD equivale a cuántos COP</span><input name="exchangeRate" inputmode="decimal" placeholder="Tasa que vas a usar"><small>La cuota se convierte a COP para el resumen. Puedes actualizar esta tasa.</small></label>
+        </div>
+        <button class="cozy-button" data-create-label type="submit">Crear gasto</button>
       </form>
     </section>
   `;
+  updateAddForm();
 }
 
 function renderExpenseLine(item) {
@@ -435,7 +458,7 @@ function renderExpenseLine(item) {
       ${item.entries ? renderEntryInputs(item) : renderMoneyInputs(item)}
       <small data-summary="${item.key}"></small>
       ${item.annual ? `<small>Anual / 12${item.paidMonth !== undefined ? ` · chuleado hasta ${monthNames[item.paidMonth]}` : ""}</small>` : ""}
-      ${item.hint ? `<small>${escapeHtml(item.hint)}</small>` : ""}
+      ${item.hint && !item.entries ? `<small>${escapeHtml(item.hint)}</small>` : ""}
     </article>
   `;
 }
@@ -446,15 +469,15 @@ function renderProfile() {
       <header class="screen-header centered profile-header">
         <span class="profile-avatar">👤</span>
         <h1>MI PERFIL</h1>
-        <p>Cuenta local</p>
+        <p>${escapeHtml(account?.email || "Cuenta local")}</p>
       </header>
 
       <section class="login-card">
         <div>
           <span>Login</span>
-          <strong>Inicia sesión para guardar tu nido en todos tus dispositivos.</strong>
+          <strong>${escapeHtml(account?.status || "Inicia sesión para guardar tu nido en todos tus dispositivos.")}</strong>
         </div>
-        <button type="button">Entrar</button>
+        <button type="button" data-account-open>${account?.email ? "Mi cuenta" : "Entrar"}</button>
       </section>
 
       <section class="profile-menu" aria-label="Opciones de usuario">
@@ -678,7 +701,7 @@ function updateDynamicValues(options = { updateInputs: true }) {
 
   if (options.updateInputs) {
     document.querySelectorAll("[data-field]").forEach((input) => {
-      input.value = plainMoney(state.values[input.dataset.field] || 0);
+      input.value = fieldValue(state.values[input.dataset.field] || 0, input.dataset.currency);
     });
     document.querySelectorAll("[data-entry-key]").forEach((input) => {
       const entries = state.entries[input.dataset.entryKey] || [];
@@ -750,7 +773,7 @@ function sectionProgress(section) {
   const manualItems = items.filter((item) => !item.noCheck && !item.autoChecked);
   const entryItems = items.filter((item) => item.entries);
   const manualDone = manualItems.filter((item) => isChecked(item)).length;
-  const entryTotal = entryItems.reduce((sum, item) => sum + item.entries, 0);
+  const entryTotal = entryItems.reduce((sum, item) => sum + Math.max(1, (state.entries[item.key] || []).length), 0);
   const entryDone = entryItems.reduce((sum, item) => {
     const entries = state.entries[item.key] || [];
     return sum + entries.filter((value) => value > 0).length;
@@ -784,6 +807,7 @@ function saveAndRender(options = { updateInputs: true }) {
 
 function saveState() {
   const saved = store.save();
+  if (saved) account?.changed();
   reportStorageError();
   return saved;
 }
@@ -800,11 +824,17 @@ function createCustomExpense(form) {
   prepareMonth();
   const data = new FormData(form);
   const sectionId = data.get("sectionId") || state.selectedSectionId || "homeLife";
-  const type = data.get("expenseType") || "fixed";
+  const isDebt = sectionId === "debt";
+  const type = isDebt ? "fixed" : data.get("expenseType") || "fixed";
   const key = `custom_${crypto.randomUUID()}`;
   const icon = String(data.get("icon") || "✨").trim() || "✨";
   const label = String(data.get("label") || "").trim();
-  const initialValue = parseMoney(data.get("initialValue") || "0");
+  const currency = data.get("currency") === "USD" ? "USD" : "COP";
+  const initialValue = isDebt ? parseAmount(data.get("minimum"), currency) : parseMoney(data.get("initialValue") || "0");
+  const exchangeRate = currency === "USD" ? parseDecimal(data.get("exchangeRate")) : 1;
+  if (isDebt && currency === "USD" && !exchangeRate) {
+    form.elements.exchangeRate.setCustomValidity("Escribe una tasa mayor que cero."); form.elements.exchangeRate.reportValidity(); return;
+  }
 
   if (!label) return;
 
@@ -817,12 +847,17 @@ function createCustomExpense(form) {
     type
   };
 
+  if (isDebt) {
+    item.debt = true; item.currency = currency; item.debtTotalKey = `${key}_total`; item.group = "Créditos";
+    state.values[item.debtTotalKey] = parseAmount(data.get("principal"), currency);
+    state.currencyRates[key] = exchangeRate;
+  }
   if (type === "variable") {
-    item.entries = 5;
+    item.entries = 1;
     item.entryMode = "sum";
     item.noCheck = true;
-    item.hint = "Variable · 5 registros";
-    state.entries[key] = [initialValue, 0, 0, 0, 0];
+    item.hint = "Variable";
+    state.entries[key] = initialValue > 0 ? [initialValue] : [];
   } else {
     state.values[key] = initialValue;
     state.checked[key] = false;
@@ -839,34 +874,30 @@ function createCustomExpense(form) {
 
 
 function renderEntryInputs(item) {
-  const label = itemLabel(item);
-  return `
-    <div class="entry-grid">
-      ${Array.from({ length: item.entries }, (_, index) => `
-        <input data-entry-key="${item.key}" data-entry-index="${index}" aria-label="${escapeHtml(label)} registro ${index + 1}" type="text" inputmode="numeric" placeholder="${index + 1}">
-      `).join("")}
-    </div>
-  `;
+  const entries = state.entries[item.key] || [];
+  return `<div class="entry-module" data-entry-module="${item.key}">
+    <form class="entry-composer" data-entry-form="${item.key}">
+      <label><span>Nuevo registro · COP</span><input name="entryAmount" aria-label="Nuevo registro de ${escapeHtml(itemLabel(item))}" inputmode="numeric" placeholder="0" autocomplete="off" required></label>
+      <button type="submit" class="entry-add" aria-label="Sumar registro a ${escapeHtml(itemLabel(item))}">＋</button>
+      <button type="button" class="entry-cancel" data-cancel-entry="${item.key}" hidden>Cancelar</button>
+    </form>
+    <details class="entry-history"><summary><span>${entries.length} ${entries.length === 1 ? "registro" : "registros"}</span><strong>${money(entriesMonthlyValue(item))}</strong><span aria-hidden="true">⌄</span></summary>
+      <div class="entry-records">${entries.length ? entries.map((value, index) => `<div class="entry-record"><button type="button" data-edit-entry="${item.key}" data-index="${index}" aria-label="Editar registro ${index + 1}"><span>Registro ${index + 1}</span><strong>${money(value)}</strong></button><button class="entry-remove" type="button" data-remove-entry="${item.key}" data-index="${index}" aria-label="Eliminar registro ${index + 1}">×</button></div>`).join("") : '<p class="empty-summary">Agrega el primer registro con ＋.</p>'}</div>
+    </details>
+    <p class="entry-feedback" role="status" aria-live="polite"></p>
+  </div>`;
 }
 
 function renderMoneyInputs(item) {
   const label = itemLabel(item);
-  if (!item.debt) {
-    return `<input data-field="${item.key}" aria-label="${escapeHtml(label)}" type="text" inputmode="numeric">`;
-  }
-
-  return `
+  if (!item.debt) return `<input data-field="${item.key}" aria-label="${escapeHtml(label)}" type="text" inputmode="numeric">`;
+  const currency = calculations.debtCurrency(item);
+  return `<div class="debt-currency-badge">${currency === "USD" ? "Dólares estadounidenses · USD" : "Pesos colombianos · COP"}</div>
     <div class="debt-fields">
-      <label>
-        <small>Cuota mínima</small>
-        <input data-field="${item.key}" aria-label="${escapeHtml(label)} cuota mínima" type="text" inputmode="numeric">
-      </label>
-      <label>
-        <small>Deuda total</small>
-        <input data-field="${item.debtTotalKey}" aria-label="${escapeHtml(label)} deuda total" type="text" inputmode="numeric">
-      </label>
+      <label><small>Cuota mínima · ${currency}</small><input data-field="${item.key}" data-currency="${currency}" aria-label="${escapeHtml(label)} cuota mínima en ${currency}" type="text" inputmode="${currency === "USD" ? "decimal" : "numeric"}"></label>
+      <label><small>Deuda total · ${currency}</small><input data-field="${item.debtTotalKey}" data-currency="${currency}" aria-label="${escapeHtml(label)} deuda total en ${currency}" type="text" inputmode="${currency === "USD" ? "decimal" : "numeric"}"></label>
     </div>
-  `;
+    ${currency === "USD" ? `<label class="exchange-rate"><span>1 USD =</span><input data-rate="${item.key}" aria-label="Tasa COP por USD para ${escapeHtml(label)}" inputmode="decimal" value="${calculations.currencyRate(state, item)}"><span>COP</span></label>` : ""}`;
 }
 
 function renderDebtBar() {
@@ -910,7 +941,7 @@ function summaryText(item) {
     return `${escapeHtml(label)}: ${money(monthlyValue(item))}`;
   }
   if (item.annual) return `Mensual: ${money(monthlyValue(item))}`;
-  if (item.debt) return "Solo cuota mínima entra al nido";
+  if (item.debt) return calculations.debtCurrency(item) === "USD" ? `Cuota mensual: ${money(monthlyValue(item))} · tasa ${calculations.currencyRate(state, item)} COP/USD` : "Solo cuota mínima entra al nido";
   return money(monthlyValue(item));
 }
 
@@ -1019,12 +1050,8 @@ function splitMonthKey(key) {
   return { year, month: month.padStart(2, "0") };
 }
 
-function parseMoney(value) {
-  const raw = String(value).trim().toLowerCase().replace(",", ".");
-  const compactMatch = raw.match(/(\d+(?:\.\d+)?)\s*m/);
-  if (compactMatch) return Math.round(Number(compactMatch[1]) * 1000000);
-  return Number(raw.replace(/[^\d]/g, "")) || 0;
-}
+function parseMoney(value) { return parseAmount(value, "COP"); }
+function fieldValue(value, currency = "COP") { return currency === "USD" ? Number(value || 0).toFixed(2) : plainMoney(value); }
 
 function plainMoney(value) {
   return new Intl.NumberFormat("es-CO", {
@@ -1049,12 +1076,21 @@ function compactCurrency(value) {
 }
 
 function scrollToTop() {
-  document.querySelector(".phone-shell").scrollIntoView({ block: "start" });
+  elements.appRoot.scrollTo({ top: 0, behavior: "instant" });
 }
 
 // Data synchronization does not replace the active input or change view.
 function prepareMonth(except = null) {
   if (!store.ensureMonth()) return false;
+  document.querySelectorAll("[data-entry-module]").forEach((module) => {
+    const item = findItem(module.dataset.entryModule);
+    if (item) {
+      const input = module.querySelector('[name="entryAmount"]'), draft = input?.value, focused = document.activeElement === input;
+      module.outerHTML = renderEntryInputs(item);
+      const replacement = document.querySelector(`[data-entry-module="${item.key}"] input`);
+      if (replacement) { replacement.value = draft || ""; if (focused) replacement.focus({ preventScroll: true }); }
+    }
+  });
   document.querySelectorAll("[data-entry-key]").forEach((input) => {
     if (input !== except) input.value = "";
   });
@@ -1082,3 +1118,83 @@ window.addEventListener("storage", (event) => {
   }
 });
 saveState();
+
+function updateAddForm() {
+  const form = elements.appRoot.querySelector("[data-add-form]"); if (!form) return;
+  const isDebt = form.elements.sectionId.value === "debt", usd = form.elements.currency.value === "USD";
+  form.querySelector("[data-debt-fields]").hidden = !isDebt;
+  form.querySelector("[data-expense-fields]").hidden = isDebt;
+  form.querySelector("[data-initial-field]").hidden = isDebt;
+  form.querySelector("[data-exchange-field]").hidden = !isDebt || !usd;
+  for (const name of ["minimum", "principal"]) { form.elements[name].disabled = !isDebt; form.elements[name].inputMode = usd ? "decimal" : "numeric"; }
+  form.elements.exchangeRate.disabled = !isDebt || !usd;
+  form.elements.exchangeRate.required = isDebt && usd;
+  form.elements.exchangeRate.setCustomValidity("");
+  form.querySelector("[data-minimum-label]").textContent = `Cuota mínima · ${usd ? "USD" : "COP"}`;
+  form.querySelector("[data-principal-label]").textContent = `Deuda total · ${usd ? "USD" : "COP"}`;
+  elements.appRoot.querySelector("[data-add-heading]").textContent = isDebt ? "Nueva deuda" : "Nuevo gasto";
+  form.querySelector("[data-create-label]").textContent = isDebt ? "Crear deuda" : "Crear gasto";
+}
+
+function refreshEntryModule(key, message, open = false) {
+  const module = elements.appRoot.querySelector(`[data-entry-module="${key}"]`), item = findItem(key);
+  if (!module || !item) return;
+  const wasOpen = open || module.querySelector("details").open;
+  module.outerHTML = renderEntryInputs(item);
+  const fresh = elements.appRoot.querySelector(`[data-entry-module="${key}"]`);
+  fresh.querySelector("details").open = wasOpen;
+  fresh.querySelector(".entry-feedback").textContent = message;
+  fresh.querySelector('[name="entryAmount"]').focus({ preventScroll: true });
+  updateLiveDetail();
+}
+function commitEntry(form) {
+  const key = form.dataset.entryForm, input = form.elements.entryAmount, value = parseMoney(input.value);
+  if (!value) { input.setCustomValidity("Escribe un valor mayor que cero."); input.reportValidity(); return; }
+  const editing = form.dataset.editing;
+  const rolled = prepareMonth();
+  const entries = state.entries[key] ||= [];
+  if (!rolled && editing !== undefined && Number(editing) < entries.length) entries[Number(editing)] = value;
+  else entries.push(value);
+  saveState(); refreshEntryModule(key, editing !== undefined && !rolled ? "Registro actualizado" : "Registro agregado");
+}
+function handleEntryAction(button) {
+  const key = button.dataset.editEntry || button.dataset.removeEntry || button.dataset.cancelEntry;
+  if (button.hasAttribute("data-cancel-entry")) { refreshEntryModule(key, "Edición cancelada", true); return; }
+  const index = Number(button.dataset.index), entries = state.entries[key] || [];
+  if (!Number.isInteger(index) || index < 0 || index >= entries.length) return;
+  if (button.hasAttribute("data-remove-entry")) {
+    if (prepareMonth()) { saveState(); updateLiveDetail(); return; }
+    entries.splice(index, 1); saveState(); refreshEntryModule(key, "Registro eliminado", true); return;
+  }
+  const form = elements.appRoot.querySelector(`[data-entry-form="${key}"]`);
+  form.dataset.editing = String(index); form.elements.entryAmount.value = plainMoney(entries[index]);
+  form.querySelector("label > span").textContent = `Editar registro ${index + 1} · COP`;
+  form.querySelector('[type="submit"]').textContent = "✓";
+  form.querySelector('[type="submit"]').setAttribute("aria-label", "Guardar registro");
+  form.querySelector("[data-cancel-entry]").hidden = false;
+  form.elements.entryAmount.focus({ preventScroll: true }); form.elements.entryAmount.select();
+}
+elements.appRoot.addEventListener("input", (event) => {
+  if (event.target.matches('[name="entryAmount"], [name="exchangeRate"]')) event.target.setCustomValidity("");
+});
+
+function fitViewport() {
+  const viewport = window.visualViewport;
+  document.documentElement.style.setProperty("--viewport-height", `${viewport?.height || window.innerHeight}px`);
+  document.documentElement.style.setProperty("--viewport-bottom", `${Math.max(0, window.innerHeight - (viewport?.height || window.innerHeight) - (viewport?.offsetTop || 0))}px`);
+}
+window.visualViewport?.addEventListener("resize", fitViewport);
+window.visualViewport?.addEventListener("scroll", fitViewport);
+window.addEventListener("resize", fitViewport);
+fitViewport();
+
+account = createAccount({
+  storageKey,
+  readState: () => state,
+  refreshProfile: () => { if (state.view === "profile") renderProfile(); },
+  switchAccount: (id) => {
+    store = createStore(() => window.localStorage, () => new Date(), { key: id ? `${storageKey}:${id}` : storageKey });
+    state = store.state; state.view = "home"; lastStorageError = ""; store.save(); render(); reportStorageError();
+  }
+});
+document.addEventListener("click", event => { if (event.target.closest("[data-account-open]")) account.open(); });

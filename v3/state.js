@@ -1,8 +1,8 @@
-import { sections, monthNames, defaultState } from "./data.js?v=v3-data-2";
-import { expenseSections, expenseKindTotals, debtStats, pendingPayments, expenseItemLog, sectionItems, monthlyValue, itemLabel, isChecked } from "./calculations.js?v=v3-data-2";
+import { sections, monthNames, defaultState } from "./data.js?v=v3-app-4";
+import { expenseSections, expenseKindTotals, debtStats, pendingPayments, expenseItemLog, sectionItems, monthlyValue, itemLabel, isChecked, debtCurrency, currencyRate } from "./calculations.js?v=v3-app-4";
 
 export const storageKey = "blue-bird-v3-expenses-v1";
-const schemaVersion = 2;
+const schemaVersion = 3;
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const record = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const safeKey = (key) => /^[a-zA-Z0-9_-]+$/.test(key) && !["__proto__", "prototype", "constructor"].includes(key);
@@ -44,16 +44,18 @@ export function normalizeState(raw, now) {
   if (["home", "explore", "detail", "goals", "monthLog", "profile", "add"].includes(source.view)) state.view = source.view;
   if (sections.some((section) => section.id === source.selectedSectionId)) state.selectedSectionId = source.selectedSectionId;
   state.selectedLogKey = validPeriod(source.selectedLogKey) ? source.selectedLogKey : "";
-  for (const field of ["values", "entries", "checked", "removedItems", "itemLabels", "migrations"]) {
+  for (const field of ["values", "entries", "checked", "removedItems", "itemLabels", "migrations", "currencyRates"]) {
     if (!record(source[field])) continue;
     for (const [key, value] of Object.entries(source[field])) {
       if (!safeKey(key)) continue;
       if (field === "values") state.values[key] = amount(value);
-      if (field === "entries" && Array.isArray(value)) state.entries[key] = value.map(amount);
+      if (field === "currencyRates") state.currencyRates[key] = amount(value);
+      if (field === "entries" && Array.isArray(value)) state.entries[key] = value.map(amount).filter((entry) => entry > 0);
       if (["checked", "removedItems", "migrations"].includes(field)) state[field][key] = value === true;
       if (field === "itemLabels" && typeof value === "string") state.itemLabels[key] = value;
     }
   }
+  for (const key of Object.keys(state.entries)) state.entries[key] = state.entries[key].filter((entry) => entry > 0);
   const used = new Set(sections.flatMap((section) => section.items.map((item) => item.key)));
   for (const section of sections) {
     const items = source.customItems?.[section.id];
@@ -69,6 +71,11 @@ export function normalizeState(raw, now) {
         cleaned.noCheck = true;
       }
       if (item.debtTotalKey && !safeKey(item.debtTotalKey)) delete cleaned.debtTotalKey;
+      if (item.debt === true && cleaned.debtTotalKey) {
+        cleaned.debt = true;
+        cleaned.currency = item.currency === "USD" ? "USD" : "COP";
+        if (item.exchangeRate != null) cleaned.exchangeRate = amount(item.exchangeRate);
+      }
       if (item.group && (typeof item.group !== "string" || ["__proto__", "constructor", "prototype"].includes(item.group))) delete cleaned.group;
       if (item.monthlyFactor != null) cleaned.monthlyFactor = amount(item.monthlyFactor);
       if (item.hint != null) cleaned.hint = text(item.hint);
@@ -99,7 +106,7 @@ export function monthSnapshot(state, key, now) {
     kindTotals: expenseKindTotals(state), debt: debtStats(state), pending: pendingPayments(state), items: expenseItemLog(state), sections: expenses,
     // Full independent records coexist with the legacy summary consumed by the UI.
     snapshot: { sections: sections.map((section) => ({ id: section.id, title: section.title, autoSectionChecked: Boolean(section.autoSectionChecked), items: sectionItems(state, section).map((item) => ({
-      ...clone(item), label: itemLabel(state, item), value: amount(state.values[item.key]),
+      ...clone(item), label: itemLabel(state, item), value: amount(state.values[item.key]), currency: debtCurrency(item), exchangeRate: currencyRate(state, item),
       ...(item.debtTotalKey ? { debtTotal: amount(state.values[item.debtTotalKey]) } : {}),
       ...(item.entries ? { entryValues: [...(state.entries[item.key] || [])] } : {}),
       checked: isChecked(state, item), monthly: monthlyValue(state, item)
@@ -107,12 +114,13 @@ export function monthSnapshot(state, key, now) {
   };
 }
 
-export function createStore(storageProvider, clock = () => new Date()) {
+export function createStore(storageProvider, clock = () => new Date(), options = {}) {
+  const activeStorageKey = options.key || storageKey;
   let storage, lastRaw, parsed;
-  const store = { key: storageKey, state: null, error: "", blocked: false, ensureMonth, syncCurrentMonth, save, checkExternalChange };
+  const store = { key: activeStorageKey, state: null, error: "", blocked: false, ensureMonth, syncCurrentMonth, save, checkExternalChange };
   try {
     storage = typeof storageProvider === "function" ? storageProvider() : storageProvider;
-    lastRaw = storage.getItem(storageKey);
+    lastRaw = storage.getItem(activeStorageKey);
     parsed = lastRaw === null ? null : JSON.parse(lastRaw);
   } catch {
     if (lastRaw === undefined) {
@@ -127,7 +135,7 @@ export function createStore(storageProvider, clock = () => new Date()) {
     store.error = "Estos datos pertenecen a una versión más reciente. Actualiza la página antes de guardar.";
   } else if (lastRaw != null && JSON.stringify(canonical(parsed)) !== JSON.stringify(canonical(store.state))) {
     try {
-      let backupKey = `${storageKey}-backup-${clock().getTime()}`;
+      let backupKey = `${activeStorageKey}-backup-${clock().getTime()}`;
       while (storage.getItem(backupKey) !== null) backupKey += "-copy";
       storage.setItem(backupKey, lastRaw);
     } catch {
@@ -147,7 +155,7 @@ export function createStore(storageProvider, clock = () => new Date()) {
     if (next <= state.activeMonth) return false;
     writeSnapshot(state.activeMonth, now);
     state.checked = {};
-    state.entries = Object.fromEntries(Object.entries(state.entries).map(([key, values]) => [key, values.map(() => 0)]));
+    state.entries = Object.fromEntries(Object.keys(state.entries).map((key) => [key, []]));
     state.activeMonth = next;
     return true;
   }
@@ -159,7 +167,7 @@ export function createStore(storageProvider, clock = () => new Date()) {
   function checkExternalChange() {
     if (store.blocked) return false;
     try {
-      if (storage.getItem(storageKey) === lastRaw) return true;
+      if (storage.getItem(activeStorageKey) === lastRaw) return true;
       store.blocked = true;
       store.error = "Los datos cambiaron en otra pestaña. Esta pestaña dejó de guardar para no sobrescribirlos. Recarga antes de continuar.";
     } catch {
@@ -172,7 +180,7 @@ export function createStore(storageProvider, clock = () => new Date()) {
     syncCurrentMonth();
     try {
       const encoded = JSON.stringify(store.state);
-      storage.setItem(storageKey, encoded);
+      storage.setItem(activeStorageKey, encoded);
       lastRaw = encoded;
       store.error = "";
       return true;

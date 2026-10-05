@@ -1512,3 +1512,49 @@ input:focus {
     border-radius: 34px;
   }
 }
+
+/* App viewport: the content scrolls inside a stable mobile frame. */
+[hidden] { display: none !important; }
+html, body { height: 100%; overflow: hidden; }
+body { min-height: 0; }
+.phone-shell { height: var(--viewport-height, 100dvh); min-height: 0; padding: 0; }
+#appRoot { height: 100%; overflow-y: auto; overscroll-behavior-y: contain; padding: calc(22px + env(safe-area-inset-top)) 22px calc(116px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+.bottom-nav { position: fixed; left: 50%; right: auto; transform: translateX(-50%); bottom: var(--viewport-bottom, 0px); width: min(100%, 430px); z-index: 20; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+input, select { font-size: 16px; }
+.entry-module { margin-top: 14px; padding: 12px; border-radius: 18px; background: #eef4fb; }
+.entry-composer { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.entry-composer label { flex: 1; min-width: 0; }
+.entry-composer label span, .exchange-rate-label span { display: block; font-size: 11px; margin-bottom: 7px; color: #526580; }
+.entry-composer input, .exchange-rate-label input { width: 100%; min-width: 0; height: 46px; border: 1px solid #d7e2f0; border-radius: 12px; padding: 10px; background: white; }
+.entry-add { width: 46px; height: 46px; border: 0; border-radius: 14px; background: #173d70; color: white; font-size: 25px; cursor: pointer; }
+.entry-cancel { border: 0; background: transparent; color: #173d70; min-height: 44px; }
+.entry-history summary { display: flex; gap: 8px; align-items: center; justify-content: space-between; cursor: pointer; padding-top: 12px; font-size: 12px; }
+.entry-record { display: flex; align-items: center; border-top: 1px solid #dae5f1; }
+.entry-record button { min-height: 44px; border: 0; background: transparent; color: #173d70; }
+.entry-record button:first-child { flex: 1; display: flex; justify-content: space-between; gap: 8px; text-align: left; }
+.entry-record button:last-child { width: 44px; }
+.entry-feedback { margin: 4px 0 0; font-size: 11px; color: #526580; }
+.currency-badge { display: inline-block; border-radius: 8px; padding: 4px 8px; background: #eef4fb; color: #173d70; font-size: 11px; }
+.exchange-rate-label { display: block; margin-top: 12px; }
+.debt-create-fields { display: grid; gap: 14px; }
+.debt-create-fields small { color: #65748a; line-height: 1.5; }
+.account-dialog { border: 0; border-radius: 26px; padding: 26px; width: min(92vw, 390px); max-height: 90dvh; overflow: auto; color: #193659; background: #f7faff; }
+.account-dialog::backdrop { background: #14283d88; backdrop-filter: blur(4px); }
+.account-dialog h2 { font-family: Georgia, serif; font-size: 29px; margin: 10px 0; }
+.account-dialog p { font-size: 14px; line-height: 1.55; }
+.account-dialog form { display: grid; gap: 14px; }
+.account-dialog label { display: grid; gap: 7px; font-size: 13px; }
+.account-dialog input { width: 100%; border: 1px solid #cbd9e9; border-radius: 12px; padding: 12px; }
+.account-dialog button { min-height: 44px; border-radius: 12px; border: 1px solid #cedbea; background: white; color: #193659; padding: 8px 12px; cursor: pointer; }
+.account-dialog button[type=submit] { background: #193f72; color: white; }
+.account-dialog button:disabled { opacity: .55; cursor: wait; }
+.account-close { float: right; }
+.account-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.account-status { overflow-wrap: anywhere; }
+@media (min-width: 760px) { .phone-shell { height: calc(var(--viewport-height, 100dvh) - 56px); min-height: 0; } .bottom-nav { bottom: calc(28px + var(--viewport-bottom, 0px)); border-radius: 0 0 34px 34px; } }
+@media (max-height: 600px) { body { padding: 0; } .phone-shell { height: var(--viewport-height, 100dvh); border-radius: 0; } .bottom-nav { bottom: var(--viewport-bottom, 0px); border-radius: 0; } }
+.debt-currency-badge { display: inline-block; margin: 8px 0; font: 11px/1.4 system-ui, sans-serif; color: #526580; }
+.exchange-rate { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 10px; background: #eef4fb; border-radius: 14px; font: 12px system-ui, sans-serif; }
+.exchange-rate input { flex: 1; width: 0; min-width: 0; height: 44px; border: 1px solid #d7e2f0; border-radius: 10px; padding: 8px; background: white; }
+.entry-record button { font: 12px system-ui, sans-serif; padding: 8px 5px; }
+.entry-record strong { white-space: nowrap; }
