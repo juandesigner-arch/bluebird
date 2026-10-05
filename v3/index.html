@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Blue Bird</title>
+    <link rel="stylesheet" href="styles.css?v=bluebird-v3-1">
+  </head>
+  <body>
+    <main class="phone-shell">
+      <section class="splash-screen" id="splashScreen" aria-label="Cargando Blue Bird">
+        <div class="splash-mark">🪺</div>
+        <h1>Blue Bird</h1>
+        <p>App de gastos</p>
+      </section>
+
+      <section id="appRoot"></section>
+
+      <nav class="bottom-nav" aria-label="Navegacion principal">
+        <button class="nav-item active" data-view="home" type="button" aria-label="Nido">
+          <span>🪺</span>
+          <small>Nido</small>
+        </button>
+        <button class="nav-item" data-view="explore" type="button" aria-label="Explorar">
+          <span>🧭</span>
+          <small>Explorar</small>
+        </button>
+        <button class="nav-add" data-view="add" type="button" aria-label="Agregar">+</button>
+        <button class="nav-item" data-view="goals" type="button" aria-label="Resumen">
+          <span>📊</span>
+          <small>Resumen</small>
+        </button>
+        <button class="nav-item" data-view="profile" type="button" aria-label="Perfil">
+          <span>👤</span>
+          <small>Perfil</small>
+        </button>
+      </nav>
+    </main>
+
+    <script src="app.js?v=bluebird-v3-1"></script>
+  </body>
+</html>
