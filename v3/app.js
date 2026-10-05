@@ -1,175 +1,22 @@
-const storageKey = "blue-bird-v3-expenses-v1";
+import { sections, monthNames } from "./data.mjs?v=v3-data-1";
+import * as calculations from "./calculations.mjs?v=v3-data-1";
+import { createStore } from "./state.mjs?v=v3-data-1";
 
-const monthNames = [
-  "enero",
-  "febrero",
-  "marzo",
-  "abril",
-  "mayo",
-  "junio",
-  "julio",
-  "agosto",
-  "septiembre",
-  "octubre",
-  "noviembre",
-  "diciembre"
-];
-
-const sections = [
-  {
-    id: "housing",
-    title: "Vivienda",
-    subtitle: "Arriendo",
-    asset: { src: "assets/icons/casita.png", alt: "Vivienda" },
-    color: "#0057d9",
-    metaphor: "casita de pájaros",
-    completeCopy: "El refugio quedo tranquilo.",
-    items: [
-      { key: "rent", label: "Arriendo", icon: "🏡", value: 0 }
-    ]
-  },
-  {
-    id: "services",
-    title: "Servicios",
-    subtitle: "Servicios y hogar",
-    asset: "🪹",
-    color: "#00a6ff",
-    metaphor: "ramitas",
-    completeCopy: "Las ramitas ya sostienen el mes.",
-    items: [
-      { key: "water", label: "Agua", icon: "💧", value: 0, monthlyFactor: 0.5, hint: "Bimestral se suma 50%" },
-      { key: "power", label: "Luz", icon: "⚡", value: 0 },
-      { key: "gas", label: "Gas", icon: "🔥", value: 0 },
-      { key: "internet", label: "Internet", icon: "🌐", value: 0 },
-      { key: "phone", label: "Celular", icon: "📱", value: 0 }
-    ]
-  },
-  {
-    id: "transport",
-    title: "Transporte",
-    subtitle: "Movilidad",
-    asset: "🪶",
-    color: "#ff8a00",
-    metaphor: "plumas",
-    completeCopy: "Las plumas estan listas para moverse.",
-    items: [
-      { key: "parking", label: "Parqueadero", icon: "🅿️", value: 0 },
-      { key: "soat", label: "SOAT", icon: "🛡️", value: 0, annual: true, paidMonth: 3, autoChecked: true, hint: "Pagado en abril" },
-      { key: "techInspection", label: "Tecnomecánica", icon: "📄", value: 0, annual: true, paidMonth: 3, autoChecked: true, hint: "Pagado en abril" },
-      { key: "gasoline", label: "Gasolina", icon: "⛽", value: 0, entries: 5, entryMode: "sum", noCheck: true, hint: "5 registros" },
-      { key: "maintenance", label: "Mantenimiento", icon: "🔧", value: 0, entries: 2, entryMode: "sum", noCheck: true, hint: "2 slots · puede ser cero" }
-    ]
-  },
-  {
-    id: "homeLife",
-    title: "Alimentación",
-    subtitle: "Mercado",
-    asset: "🐛",
-    color: "#ff3b30",
-    metaphor: "gusanos",
-    autoSectionChecked: true,
-    completeCopy: "Los gusanos del mes estan en su lugar.",
-    items: [
-      { key: "goingOut", label: "Bares, restaurantes y salidas", icon: "🍽️", value: 0, entries: 5, entryMode: "sum", noCheck: true, hint: "5 registros" },
-      { key: "marketHome", label: "Mercado, aseo y hogar", icon: "🛒", value: 0, entries: 5, entryMode: "sum", noCheck: true, hint: "5 registros" },
-      { key: "pet", label: "Mascota", icon: "🐱", value: 0, entries: 3, entryMode: "sum", noCheck: true, hint: "3 registros" }
-    ]
-  },
-  {
-    id: "health",
-    title: "Salud",
-    subtitle: "Bienestar",
-    asset: "🍃",
-    color: "#34c759",
-    metaphor: "hojas",
-    completeCopy: "Las hojas ya respiran suave.",
-    items: [
-      { key: "gym", label: "Gym", icon: "💪", value: 0 },
-      { key: "medicine", label: "Medicinas / suplementos", icon: "💊", value: 0, entries: 3, entryMode: "sum", noCheck: true, hint: "3 registros variables" },
-      { key: "wellbeing", label: "Bienestar", icon: "🧠", value: 0, entries: 3, entryMode: "sum", noCheck: true, hint: "3 registros variables" }
-    ]
-  },
-  {
-    id: "subscriptions",
-    title: "Ocio",
-    subtitle: "Tiempo para ti",
-    asset: "🌰",
-    color: "#af52de",
-    metaphor: "bellotas",
-    autoSectionChecked: true,
-    completeCopy: "Cobros automaticos, sin ruido.",
-    items: [
-      { key: "spotify", label: "Spotify", icon: "🎵", value: 0, noCheck: true, hint: "Cobro automático" },
-      { key: "icloud", label: "iCloud", icon: "☁️", value: 0, noCheck: true, hint: "Cobro automático" },
-      { key: "chatgpt", label: "ChatGPT", icon: "🤖", value: 0, noCheck: true, hint: "Cobro automático" },
-      { key: "adobe", label: "Adobe", icon: "🎨", value: 0, noCheck: true, hint: "Cobro automático" }
-    ]
-  },
-  {
-    id: "entrepreneurship",
-    title: "Negocio",
-    subtitle: "Mi emprendimiento",
-    asset: "🚀",
-    color: "#ffcc00",
-    metaphor: "libro pequeño",
-    completeCopy: "El taller sigue caminando.",
-    items: [
-      { key: "officeOne", label: "Oficina 1", icon: "🏢", value: 0 },
-      { key: "officeTwo", label: "Oficina 2", icon: "🏢", value: 0 }
-    ]
-  },
-  {
-    id: "debt",
-    title: "Deudas",
-    subtitle: "Nubes por despejar",
-    asset: "☁️",
-    color: "#0a2540",
-    metaphor: "nubes",
-    completeCopy: "Las nubes estan bajo vigilancia.",
-    items: [
-      { key: "mastercardBancolombiaMin", debtTotalKey: "mastercardBancolombiaDebt", label: "MasterCard Bancolombia", icon: "💳", value: 0, debtTotal: 0, group: "Tarjetas", debt: true },
-      { key: "visaDaviviendaMin", debtTotalKey: "visaDaviviendaDebt", label: "Visa Davivienda", icon: "💳", value: 0, debtTotal: 0, group: "Tarjetas", debt: true },
-      { key: "visaRappiMin", debtTotalKey: "visaRappiDebt", label: "Visa Rappi", icon: "💳", value: 0, debtTotal: 0, group: "Tarjetas", debt: true },
-      { key: "freeInvestmentMin", debtTotalKey: "freeInvestmentDebt", label: "Libre inversión", icon: "🏦", value: 0, debtTotal: 0, group: "Créditos", debt: true },
-      { key: "crediagilMin", debtTotalKey: "crediagilDebt", label: "Crediágil", icon: "🏦", value: 0, debtTotal: 0, group: "Créditos", debt: true }
-    ]
-  }
-];
-
-const allItems = sections.flatMap((section) => section.items);
-const defaultValues = Object.fromEntries(
-  allItems.flatMap((item) => [
-    [item.key, item.value],
-    ...(item.debtTotalKey ? [[item.debtTotalKey, item.debtTotal || 0]] : [])
-  ])
-);
-const defaultEntries = Object.fromEntries(
-  allItems
-    .filter((item) => item.entries)
-    .map((item) => [item.key, Array.from({ length: item.entries }, () => 0)])
-);
-const defaultState = {
-  view: "home",
-  selectedSectionId: "homeLife",
-  selectedLogKey: "",
-  values: defaultValues,
-  entries: defaultEntries,
-  customItems: {},
-  itemLabels: {},
-  removedItems: { crediagilMin: true },
-  yearLogs: {},
-  checked: {},
-  migrations: {}
-};
-
-const debtDefaultMigration = "debt-defaults-2026-07-02";
-const debtRemovalMigration = "debt-remove-crediagil-2026-09-02";
-const debtDefaultValues = {
-  freeInvestmentDebt: 0,
-  crediagilDebt: 0
-};
-
-let state = loadState();
+const store = createStore(() => window.localStorage);
+const state = store.state;
+let lastStorageError = "";
+const expenseKind = calculations.expenseKind;
+const pendingPayments = (...args) => calculations.pendingPayments(state, ...args);
+const expenseKindTotals = (...args) => calculations.expenseKindTotals(state, ...args);
+const expenseSections = (...args) => calculations.expenseSections(state, ...args);
+const monthlyValue = (...args) => calculations.monthlyValue(state, ...args);
+const entriesMonthlyValue = (...args) => calculations.entriesMonthlyValue(state, ...args);
+const debtStats = (...args) => calculations.debtStats(state, ...args);
+const expenseItemLog = (...args) => calculations.expenseItemLog(state, ...args);
+const itemLabel = (...args) => calculations.itemLabel(state, ...args);
+const isChecked = (...args) => calculations.isChecked(state, ...args);
+const sectionItems = (...args) => calculations.sectionItems(state, ...args);
+const allCurrentItems = (...args) => calculations.allCurrentItems(state, ...args);
 
 const elements = {
   appRoot: document.querySelector("#appRoot"),
@@ -190,6 +37,8 @@ elements.appRoot.addEventListener("input", (event) => {
   const input = event.target.closest("[data-field]");
   const entryInput = event.target.closest("[data-entry-key]");
   const labelInput = event.target.closest("[data-label-key]");
+
+  if (input || entryInput || labelInput) prepareMonth(event.target);
 
   if (input) {
     state.values[input.dataset.field] = parseMoney(input.value);
@@ -219,7 +68,9 @@ elements.appRoot.addEventListener("blur", (event) => {
 elements.appRoot.addEventListener("change", (event) => {
   const checkbox = event.target.closest("[data-check]");
   if (!checkbox || checkbox.disabled) return;
-  state.checked[checkbox.dataset.check] = checkbox.checked;
+  const checked = checkbox.checked;
+  prepareMonth(checkbox);
+  state.checked[checkbox.dataset.check] = checked;
   saveState();
   updateLiveDetail();
 });
@@ -297,6 +148,7 @@ elements.nav.addEventListener("click", (event) => {
 });
 
 function render(options = { updateInputs: true }) {
+  store.ensureMonth();
   const view = state.view || "home";
 
   if (view === "home") renderHome();
@@ -373,10 +225,10 @@ function renderHomePending(pending) {
       <div class="home-pending-list">
         ${pending.length ? pending.slice(0, 5).map((item) => `
           <button class="home-pending-row" data-open-section="${item.sectionId}" type="button">
-            <span>${item.icon}</span>
+            <span>${escapeHtml(item.icon)}</span>
             <div>
               <strong>${escapeHtml(item.label)}</strong>
-              <small>${item.section}</small>
+              <small>${escapeHtml(item.section)}</small>
             </div>
             <em>${money(item.monthly)}</em>
           </button>
@@ -406,7 +258,7 @@ function renderNestChart() {
           return `
             <div class="chart-row">
               <span class="chart-dot" style="background:${section.color}"></span>
-              <span>${section.label}</span>
+              <span>${escapeHtml(section.label)}</span>
               <strong>${percent}%</strong>
             </div>
           `;
@@ -503,7 +355,7 @@ function renderDetail() {
       <div class="detail-list">
         <p class="list-title">Gastos</p>
         ${Object.entries(groupItems(sectionItems(section))).map(([group, items]) => `
-          ${group !== "default" ? `<p class="subhead">${group}</p>` : ""}
+          ${group !== "default" ? `<p class="subhead">${escapeHtml(group)}</p>` : ""}
           ${items.map((item) => renderExpenseLine(item)).join("")}
         `).join("")}
       </div>
@@ -575,15 +427,15 @@ function renderExpenseLine(item) {
     <article class="expense-line ${item.entries ? "has-entries" : ""}">
       <div class="expense-title">
         ${item.noCheck ? "" : `<input class="check-input" data-check="${item.key}" type="checkbox" ${item.autoChecked ? "disabled" : ""}>`}
-        <span>${item.icon}</span>
-        <input class="title-input" data-label-key="${item.key}" aria-label="Nombre de ${label}" type="text" value="${escapeHtml(label)}">
+        <span>${escapeHtml(item.icon)}</span>
+        <input class="title-input" data-label-key="${item.key}" aria-label="Nombre de ${escapeHtml(label)}" type="text" value="${escapeHtml(label)}">
         <em class="kind-chip ${kind}">${kind === "variable" ? "Variable" : "Fijo"}</em>
-        ${item.debt ? `<button class="remove-debt-button" data-remove-debt="${item.key}" type="button" aria-label="Eliminar ${label}">Eliminar</button>` : ""}
+        ${item.debt ? `<button class="remove-debt-button" data-remove-debt="${item.key}" type="button" aria-label="Eliminar ${escapeHtml(label)}">Eliminar</button>` : ""}
       </div>
       ${item.entries ? renderEntryInputs(item) : renderMoneyInputs(item)}
       <small data-summary="${item.key}"></small>
       ${item.annual ? `<small>Anual / 12${item.paidMonth !== undefined ? ` · chuleado hasta ${monthNames[item.paidMonth]}` : ""}</small>` : ""}
-      ${item.hint ? `<small>${item.hint}</small>` : ""}
+      ${item.hint ? `<small>${escapeHtml(item.hint)}</small>` : ""}
     </article>
   `;
 }
@@ -674,7 +526,7 @@ function renderGoals() {
           return `
             <div class="summary-row">
               <span class="chart-dot" style="background:${section.color}"></span>
-              <span>${section.label}</span>
+              <span>${escapeHtml(section.label)}</span>
               <strong>${money(section.monthly)}</strong>
               <small>${percent}%</small>
             </div>
@@ -688,10 +540,10 @@ function renderGoals() {
       <div class="pending-list">
         ${pending.length ? pending.map((item) => `
           <div class="pending-row">
-            <span>${item.icon}</span>
+            <span>${escapeHtml(item.icon)}</span>
             <div>
               <strong>${escapeHtml(item.label)}</strong>
-              <small>${item.section}</small>
+              <small>${escapeHtml(item.section)}</small>
             </div>
             <em>${money(item.monthly)}</em>
           </div>
@@ -708,7 +560,7 @@ function renderGoals() {
             <div class="month-log-list">
               ${group.logs.map((log) => `
                 <button class="month-log-row" data-open-log="${log.key}" type="button">
-                  <span>${log.month}</span>
+                  <span>${escapeHtml(log.month)}</span>
                   <strong>${money(log.monthlyTotal)}</strong>
                   <small>${log.pending.length ? `${log.pending.length} pendientes` : "Mes al dia"}</small>
                 </button>
@@ -735,7 +587,7 @@ function renderMonthLog() {
     <section class="month-log-screen">
       <header class="detail-top">
         <button data-back="goals" type="button" aria-label="Volver">‹</button>
-        <h1>${log.month}</h1>
+        <h1>${escapeHtml(log.month)}</h1>
         <span></span>
       </header>
 
@@ -763,7 +615,7 @@ function renderMonthLog() {
             return `
               <div class="summary-row">
                 <span class="chart-dot" style="background:${section.color}"></span>
-                <span>${section.label}</span>
+                <span>${escapeHtml(section.label)}</span>
                 <strong>${money(section.monthly)}</strong>
                 <small>${percent}%</small>
               </div>
@@ -777,10 +629,10 @@ function renderMonthLog() {
         <div class="pending-list">
           ${log.items.length ? log.items.map((item) => `
             <div class="pending-row">
-              <span>${item.icon}</span>
+              <span>${escapeHtml(item.icon)}</span>
               <div>
                 <strong>${escapeHtml(item.label)}</strong>
-                <small>${item.section}</small>
+                <small>${escapeHtml(item.section)}</small>
               </div>
               <em>${money(item.monthly)}</em>
             </div>
@@ -793,10 +645,10 @@ function renderMonthLog() {
         <div class="pending-list">
           ${log.pending.length ? log.pending.map((item) => `
             <div class="pending-row">
-              <span>${item.icon}</span>
+              <span>${escapeHtml(item.icon)}</span>
               <div>
                 <strong>${escapeHtml(item.label)}</strong>
-                <small>${item.section}</small>
+                <small>${escapeHtml(item.section)}</small>
               </div>
               <em>${money(item.monthly)}</em>
             </div>
@@ -818,33 +670,8 @@ function renderMonthLog() {
   `;
 }
 
-function pendingPayments() {
-  return sections
-    .filter((section) => !section.autoSectionChecked)
-    .flatMap((section) => sectionItems(section).map((item) => ({ ...item, section: section.title, sectionId: section.id })))
-    .filter((item) => !item.noCheck && !item.autoChecked && !isChecked(item))
-    .map((item) => ({
-      icon: item.icon,
-      label: itemLabel(item),
-      section: item.section,
-      sectionId: item.sectionId,
-      monthly: monthlyValue(item)
-    }));
-}
 
-function expenseKindTotals() {
-  return allCurrentItems().reduce((totals, item) => {
-    const kind = expenseKind(item);
-    totals[kind] += monthlyValue(item);
-    return totals;
-  }, { fixed: 0, variable: 0 });
-}
 
-function expenseKind(item) {
-  if (item.type === "variable") return "variable";
-  if (item.entries || item.debt || item.noCheck) return "variable";
-  return "fixed";
-}
 
 function updateDynamicValues(options = { updateInputs: true }) {
   const debt = debtStats();
@@ -942,40 +769,13 @@ function manualCheckItems() {
     .filter((item) => !item.noCheck && !item.autoChecked);
 }
 
-function expenseSections() {
-  return sections.map((section) => {
-    const monthly = sectionItems(section).reduce((sum, item) => sum + monthlyValue(item), 0);
-    return {
-      id: section.id,
-      label: section.title,
-      color: section.color,
-      monthly,
-      annual: monthly * 12
-    };
-  });
-}
 
 function annualSectionCopy(section) {
   const annual = sectionItems(section).reduce((sum, item) => sum + monthlyValue(item), 0) * 12;
   return `Conciencia anual:<br>esto son ${money(annual)} al año`;
 }
 
-function monthlyValue(item) {
-  if (item.entries) return entriesMonthlyValue(item);
-  const value = state.values[item.key] || 0;
-  if (item.annual) return value / 12;
-  return value * (item.monthlyFactor || 1);
-}
 
-function entriesMonthlyValue(item) {
-  const entries = state.entries[item.key] || [];
-  if (item.entryMode === "average") {
-    const filled = entries.filter((value) => value > 0);
-    if (!filled.length) return 0;
-    return filled.reduce((sum, value) => sum + value, 0) / filled.length;
-  }
-  return entries.reduce((sum, value) => sum + value, 0);
-}
 
 function saveAndRender(options = { updateInputs: true }) {
   saveState();
@@ -983,15 +783,25 @@ function saveAndRender(options = { updateInputs: true }) {
 }
 
 function saveState() {
-  syncCurrentMonthLog();
-  localStorage.setItem(storageKey, JSON.stringify(state));
+  const saved = store.save();
+  reportStorageError();
+  return saved;
+}
+
+function reportStorageError() {
+  if (!store.error) { lastStorageError = ""; return; }
+  if (lastStorageError === store.error) return;
+  lastStorageError = store.error;
+  const message = store.error;
+  window.setTimeout(() => window.alert(message), 0);
 }
 
 function createCustomExpense(form) {
+  prepareMonth();
   const data = new FormData(form);
   const sectionId = data.get("sectionId") || state.selectedSectionId || "homeLife";
   const type = data.get("expenseType") || "fixed";
-  const key = `custom_${Date.now()}`;
+  const key = `custom_${crypto.randomUUID()}`;
   const icon = String(data.get("icon") || "✨").trim() || "✨";
   const label = String(data.get("label") || "").trim();
   const initialValue = parseMoney(data.get("initialValue") || "0");
@@ -1026,62 +836,14 @@ function createCustomExpense(form) {
   scrollToTop();
 }
 
-function loadState() {
-  const saved = localStorage.getItem(storageKey);
-  if (!saved) return structuredClone(defaultState);
 
-  try {
-    const parsed = JSON.parse(saved);
-    const migrations = { ...defaultState.migrations, ...parsed.migrations };
-    const values = { ...defaultState.values, ...parsed.values };
-    const removedItems = { ...defaultState.removedItems, ...parsed.removedItems };
-
-    if (!migrations[debtDefaultMigration]) {
-      Object.assign(values, debtDefaultValues);
-      migrations[debtDefaultMigration] = true;
-    }
-
-    if (!migrations[debtRemovalMigration]) {
-      removedItems.crediagilMin = true;
-      values.crediagilMin = 0;
-      values.crediagilDebt = 0;
-      migrations[debtRemovalMigration] = true;
-    }
-
-    return {
-      view: parsed.view || defaultState.view,
-      selectedSectionId: parsed.selectedSectionId || defaultState.selectedSectionId,
-      selectedLogKey: parsed.selectedLogKey || defaultState.selectedLogKey,
-      values,
-      entries: mergeEntries(parsed.entries),
-      customItems: mergeCustomItems(parsed.customItems),
-      itemLabels: { ...defaultState.itemLabels, ...parsed.itemLabels },
-      removedItems,
-      yearLogs: mergeYearLogs(parsed.yearLogs, parsed.monthLogs),
-      checked: { ...defaultState.checked, ...parsed.checked },
-      migrations
-    };
-  } catch {
-    localStorage.removeItem(storageKey);
-    return structuredClone(defaultState);
-  }
-}
-
-function mergeCustomItems(savedCustomItems = {}) {
-  return Object.fromEntries(
-    sections.map((section) => {
-      const saved = Array.isArray(savedCustomItems[section.id]) ? savedCustomItems[section.id] : [];
-      return [section.id, saved];
-    })
-  );
-}
 
 function renderEntryInputs(item) {
   const label = itemLabel(item);
   return `
     <div class="entry-grid">
       ${Array.from({ length: item.entries }, (_, index) => `
-        <input data-entry-key="${item.key}" data-entry-index="${index}" aria-label="${label} registro ${index + 1}" type="text" inputmode="numeric" placeholder="${index + 1}">
+        <input data-entry-key="${item.key}" data-entry-index="${index}" aria-label="${escapeHtml(label)} registro ${index + 1}" type="text" inputmode="numeric" placeholder="${index + 1}">
       `).join("")}
     </div>
   `;
@@ -1090,18 +852,18 @@ function renderEntryInputs(item) {
 function renderMoneyInputs(item) {
   const label = itemLabel(item);
   if (!item.debt) {
-    return `<input data-field="${item.key}" aria-label="${label}" type="text" inputmode="numeric">`;
+    return `<input data-field="${item.key}" aria-label="${escapeHtml(label)}" type="text" inputmode="numeric">`;
   }
 
   return `
     <div class="debt-fields">
       <label>
         <small>Cuota mínima</small>
-        <input data-field="${item.key}" aria-label="${label} cuota mínima" type="text" inputmode="numeric">
+        <input data-field="${item.key}" aria-label="${escapeHtml(label)} cuota mínima" type="text" inputmode="numeric">
       </label>
       <label>
         <small>Deuda total</small>
-        <input data-field="${item.debtTotalKey}" aria-label="${label} deuda total" type="text" inputmode="numeric">
+        <input data-field="${item.debtTotalKey}" aria-label="${escapeHtml(label)} deuda total" type="text" inputmode="numeric">
       </label>
     </div>
   `;
@@ -1145,66 +907,16 @@ function updateEntryValue(input) {
 function summaryText(item) {
   if (item.entries) {
     const label = item.entryMode === "average" ? "Promedio" : "Total";
-    return `${label}: ${money(monthlyValue(item))}`;
+    return `${escapeHtml(label)}: ${money(monthlyValue(item))}`;
   }
   if (item.annual) return `Mensual: ${money(monthlyValue(item))}`;
   if (item.debt) return "Solo cuota mínima entra al nido";
   return money(monthlyValue(item));
 }
 
-function debtStats() {
-  const debtSection = sections.find((section) => section.id === "debt");
-  const debts = sectionItems(debtSection).filter((item) => item.debt);
-  const total = debts.reduce((sum, item) => sum + (state.values[item.debtTotalKey] || 0), 0);
-  const minimums = debts.reduce((sum, item) => sum + (state.values[item.key] || 0), 0);
-  const remaining = Math.max(total - minimums, 0);
-  const lifePercent = total ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0;
-  return { total, minimums, remaining, lifePercent };
-}
 
 function syncCurrentMonthLog() {
-  state.yearLogs ||= {};
-  const { key, year, month } = currentMonthMeta();
-  state.yearLogs[year] ||= {};
-  state.yearLogs[year][month] = monthSnapshot(key);
-  state.selectedLogKey ||= key;
-}
-
-function monthSnapshot(key) {
-  const { year, month } = splitMonthKey(key);
-  const expenses = expenseSections().filter((section) => section.monthly > 0);
-  const monthlyTotal = expenses.reduce((sum, section) => sum + section.monthly, 0);
-  return {
-    key,
-    year,
-    monthNumber: month,
-    month: currentMonth(),
-    savedAt: new Date().toISOString(),
-    monthlyTotal,
-    kindTotals: expenseKindTotals(),
-    debt: debtStats(),
-    pending: pendingPayments(),
-    items: expenseItemLog(),
-    sections: expenses.map((section) => ({
-      id: section.id,
-      label: section.label,
-      color: section.color,
-      monthly: section.monthly,
-      annual: section.annual
-    }))
-  };
-}
-
-function expenseItemLog() {
-  return sections.flatMap((section) => sectionItems(section)
-    .map((item) => ({
-      icon: item.icon,
-      label: itemLabel(item),
-      section: section.title,
-      monthly: monthlyValue(item)
-    }))
-    .filter((item) => item.monthly > 0)
-  );
+  store.syncCurrentMonth();
 }
 
 function sortedMonthLogs() {
@@ -1229,9 +941,6 @@ function findMonthLog(key) {
   return state.yearLogs?.[year]?.[month];
 }
 
-function itemLabel(item) {
-  return String(state.itemLabels?.[item.key] || item.label || "").trim();
-}
 
 function escapeHtml(value) {
   return String(value)
@@ -1241,49 +950,7 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
-function mergeYearLogs(savedYearLogs = {}, legacyMonthLogs = {}) {
-  const merged = { ...defaultState.yearLogs };
 
-  Object.entries(savedYearLogs || {}).forEach(([year, months]) => {
-    if (!months || typeof months !== "object") return;
-    merged[year] ||= {};
-    Object.entries(months).forEach(([month, log]) => {
-      if (!log || typeof log !== "object") return;
-      const key = log.key || `${year}-${month}`;
-      merged[year][month] = normalizeMonthLog(log, key);
-    });
-  });
-
-  Object.entries(legacyMonthLogs || {}).forEach(([key, log]) => {
-    if (!log || typeof log !== "object") return;
-    const { year, month } = splitMonthKey(key);
-    merged[year] ||= {};
-    merged[year][month] ||= normalizeMonthLog(log, key);
-  });
-
-  return merged;
-}
-
-function normalizeMonthLog(log, key) {
-  const { year, month } = splitMonthKey(key);
-  return {
-    ...log,
-    key,
-    year,
-    monthNumber: month,
-    kindTotals: log.kindTotals || { fixed: 0, variable: 0 },
-    debt: log.debt || { total: 0, minimums: 0, remaining: 0, lifePercent: 0 },
-    pending: Array.isArray(log.pending) ? log.pending : [],
-    items: Array.isArray(log.items) ? log.items : [],
-    sections: Array.isArray(log.sections) ? log.sections : []
-  };
-}
-
-function isChecked(item) {
-  if (!item) return false;
-  if (item.autoChecked) return true;
-  return Boolean(state.checked[item.key]);
-}
 
 function sectionIsComplete(sectionId) {
   const section = sections.find((item) => item.id === sectionId);
@@ -1307,34 +974,9 @@ function findItem(key) {
   return allCurrentItems().find((item) => item.key === key);
 }
 
-function mergeEntries(savedEntries = {}) {
-  const merged = Object.fromEntries(
-    Object.entries(defaultEntries).map(([key, defaults]) => {
-      const saved = Array.isArray(savedEntries[key]) ? savedEntries[key] : [];
-      return [key, defaults.map((value, index) => Number(saved[index] || value || 0))];
-    })
-  );
-
-  Object.entries(savedEntries || {}).forEach(([key, entries]) => {
-    if (!merged[key] && Array.isArray(entries)) {
-      merged[key] = entries.map((value) => Number(value || 0));
-    }
-  });
-
-  return merged;
-}
-
-function sectionItems(section) {
-  if (!section) return [];
-  return [...section.items, ...(state.customItems[section.id] || [])]
-    .filter((item) => !state.removedItems?.[item.key]);
-}
-
-function allCurrentItems() {
-  return sections.flatMap((section) => sectionItems(section));
-}
 
 function removeDebtItem(key) {
+  prepareMonth();
   const item = allCurrentItems().find((currentItem) => currentItem.key === key);
   if (!item || !item.debt) return;
 
@@ -1360,7 +1002,7 @@ function groupItems(items) {
 }
 
 function currentMonth() {
-  return monthNames[new Date().getMonth()].replace(/^./, (letter) => letter.toUpperCase());
+  return monthNames[Number(state.activeMonth.slice(5)) - 1].replace(/^./, (letter) => letter.toUpperCase());
 }
 
 function currentMonthKey() {
@@ -1368,10 +1010,8 @@ function currentMonthKey() {
 }
 
 function currentMonthMeta() {
-  const date = new Date();
-  const year = String(date.getFullYear());
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return { key: `${year}-${month}`, year, month };
+  const [year, month] = state.activeMonth.split("-");
+  return { key: state.activeMonth, year, month };
 }
 
 function splitMonthKey(key) {
@@ -1411,3 +1051,34 @@ function compactCurrency(value) {
 function scrollToTop() {
   document.querySelector(".phone-shell").scrollIntoView({ block: "start" });
 }
+
+// Data synchronization does not replace the active input or change view.
+function prepareMonth(except = null) {
+  if (!store.ensureMonth()) return false;
+  document.querySelectorAll("[data-entry-key]").forEach((input) => {
+    if (input !== except) input.value = "";
+  });
+  document.querySelectorAll("[data-check]").forEach((input) => {
+    if (input !== except) input.checked = isChecked(findItem(input.dataset.check));
+  });
+  return true;
+}
+
+function checkMonth() {
+  if (document.hidden || !prepareMonth()) return;
+  saveState();
+  if (state.view === "detail" && elements.appRoot.contains(document.activeElement)) updateLiveDetail();
+  else if (state.view !== "add") render();
+}
+
+window.addEventListener("focus", checkMonth);
+document.addEventListener("visibilitychange", checkMonth);
+window.setInterval(checkMonth, 30000);
+window.addEventListener("pagehide", () => store.save());
+window.addEventListener("storage", (event) => {
+  if (event.key === store.key || event.key === null) {
+    store.checkExternalChange();
+    reportStorageError();
+  }
+});
+saveState();

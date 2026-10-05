@@ -1,6 +1,6 @@
-import { categories, monthNames } from "./data.js?v=lite-5";
-import * as calculations from "./calculations.js?v=lite-5";
-import { createStore } from "./state.js?v=lite-5";
+import { categories, monthNames } from "./data.js?v=lite-6";
+import * as calculations from "./calculations.js?v=lite-6";
+import { createStore } from "./state.js?v=lite-6";
 
 const moneyFormatter = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 const store = createStore(() => window.localStorage);

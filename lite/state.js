@@ -1,5 +1,5 @@
-import { categories, monthNames } from "./data.js?v=lite-5";
-import { monthlyTotal, pendingItems, activeItems, itemAmount, itemName, itemIcon, slotValues } from "./calculations.js?v=lite-5";
+import { categories, monthNames } from "./data.js?v=lite-6";
+import { monthlyTotal, pendingItems, activeItems, itemAmount, itemName, itemIcon, slotValues } from "./calculations.js?v=lite-6";
 
 export const storageKey = "mini-gastos-lite-v3";
 const schemaVersion = 4;
@@ -39,7 +39,7 @@ function normalize(raw, now) {
   if (record(source.history)) {
     for (const [key, log] of Object.entries(source.history)) {
       if (!period(key) || !record(log)) continue;
-      state.history[key] = { key, year: key.slice(0, 4), month: monthNames[Number(key.slice(5)) - 1], total: amount(log.total), pending: Math.trunc(amount(log.pending)), updatedAt: typeof log.updatedAt === "string" && Number.isFinite(Date.parse(log.updatedAt)) ? log.updatedAt : now.toISOString(), ...(record(log.snapshot) ? { snapshot: copy(log.snapshot) } : {}) };
+      state.history[key] = { key, year: key.slice(0, 4), month: monthNames[Number(key.slice(5)) - 1], total: amount(log.total), pending: Math.trunc(amount(log.pending)), updatedAt: typeof log.updatedAt === "string" && Number.isFinite(Date.parse(log.updatedAt)) ? log.updatedAt : now.toISOString(), ...(record(log.originalSnapshot) ? { originalSnapshot: copy(log.originalSnapshot) } : {}), ...(record(log.snapshot) ? { snapshot: copy(log.snapshot) } : {}) };
     }
   }
   // Legacy data has no explicit period: its latest history entry is the best evidence.
@@ -66,7 +66,8 @@ export function createStore(storageProvider, clock = () => new Date()) {
       store.error = "No se pudo acceder al almacenamiento. Los datos existentes no se sobrescribirán. Revisa el permiso y recarga.";
     }
   }
-  store.state = normalize(parsed, clock());
+  const seed = raw === null ? globalThis.BlueBirdStock?.lite : null;
+  store.state = normalize(seed ? { ...copy(seed), activeMonth: monthKey(clock()) } : parsed, clock());
   if (parsed?.schemaVersion > schemaVersion) {
     store.blocked = true;
     store.error = "Estos datos pertenecen a una versión más reciente. Actualiza la aplicación para guardarlos.";

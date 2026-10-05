@@ -1,4 +1,4 @@
-import { categories } from "./data.js?v=lite-5";
+import { categories } from "./data.js?v=lite-6";
 
 export function categorySummaries(state) {
   return categories.map((category) => {

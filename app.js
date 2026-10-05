@@ -1028,7 +1028,7 @@ function createCustomExpense(form) {
 
 function loadState() {
   const saved = localStorage.getItem(storageKey);
-  if (!saved) return structuredClone(defaultState);
+  if (!saved) return structuredClone(globalThis.BlueBirdStock?.original || defaultState);
 
   try {
     const parsed = JSON.parse(saved);
