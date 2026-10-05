@@ -1,4 +1,4 @@
-import { categories } from "./data.js?v=lite-4";
+import { categories } from "./data.js?v=lite-5";
 
 export function categorySummaries(state) {
   return categories.map((category) => {
@@ -62,3 +62,35 @@ export function monthlyTotal(state) {
     .reduce((sum, item) => sum + itemAmount(state, item), 0);
 }
 
+
+// Payment checks and variable entry slots match the original visual progress.
+// Zero-valued fixed expenses are not pending; automatic charges need no check.
+export function categoryProgress(state, category) {
+  let done = 0, total = 0;
+  for (const item of activeItems(state, category)) {
+    if (item.type === "variable") {
+      const entries = slotValues(state, item);
+      total += entries.length;
+      done += entries.filter((value) => value > 0).length;
+    } else if (itemAmount(state, item) > 0) {
+      total += 1;
+      if (item.automatic || category.automatic || state.checked[item.key]) done += 1;
+    }
+  }
+  return { done, total, percent: total ? done / total * 100 : 0, complete: total > 0 && done === total };
+}
+
+export function paymentProgress(state) {
+  const items = categories.flatMap((category) => activeItems(state, category)
+    .filter((item) => requiresCheck(state, category, item)));
+  const done = items.filter((item) => state.checked[item.key]).length;
+  return { done, total: items.length, percent: items.length ? done / items.length * 100 : 0, complete: items.length > 0 && done === items.length };
+}
+
+export function debtSummary(state) {
+  const debts = categories.flatMap((category) => activeItems(state, category)).filter((item) => item.type === "debt");
+  const total = debts.reduce((sum, item) => sum + Number(state.values[`${item.key}:debt`] ?? item.debt ?? 0), 0);
+  const minimums = debts.reduce((sum, item) => sum + itemAmount(state, item), 0);
+  const paid = debts.filter((item) => state.checked[item.key]).reduce((sum, item) => sum + itemAmount(state, item), 0);
+  return { total, minimums, paid, percent: minimums ? Math.min(100, paid / minimums * 100) : 0 };
+}

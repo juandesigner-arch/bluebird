@@ -1,5 +1,5 @@
-import { categories, monthNames } from "./data.js?v=lite-4";
-import { monthlyTotal, pendingItems, activeItems, itemAmount, itemName, itemIcon, slotValues } from "./calculations.js?v=lite-4";
+import { categories, monthNames } from "./data.js?v=lite-5";
+import { monthlyTotal, pendingItems, activeItems, itemAmount, itemName, itemIcon, slotValues } from "./calculations.js?v=lite-5";
 
 export const storageKey = "mini-gastos-lite-v3";
 const schemaVersion = 4;

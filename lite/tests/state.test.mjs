@@ -81,3 +81,27 @@ test('storage denied, quota failure and future schema do not overwrite existing 
   assert.equal(createStore(futureDB, october).save(), false);
   assert.equal(futureDB.getItem(storageKey), '{"schemaVersion":999}');
 });
+
+test('super checks follow manual payments, automatic values and filled variable slots', async () => {
+  const { categoryProgress, paymentProgress, debtSummary } = await import('../calculations.js');
+  const store = createStore(memory(), october), s = store.state;
+  assert.equal(categoryProgress(s, getCategory('housing')).complete, false);
+  s.values.rent = 100;
+  assert.equal(categoryProgress(s, getCategory('housing')).done, 0);
+  s.checked.rent = true;
+  assert.equal(categoryProgress(s, getCategory('housing')).complete, true);
+  assert.equal(paymentProgress(s).complete, true);
+  s.checked.rent = false;
+  assert.equal(paymentProgress(s).complete, false);
+  s.values.spotify = 50;
+  assert.equal(categoryProgress(s, getCategory('subscriptions')).complete, true);
+  assert.equal(pendingItems(s).length, 1);
+  s.slots.restaurants = [1, 2, 3, 4, 5]; s.slots.market = [1, 2, 3, 4, 5]; s.slots.pet = [1, 2, 3];
+  assert.equal(categoryProgress(s, getCategory('food')).complete, true);
+  s.slots.market[0] = 0;
+  assert.equal(categoryProgress(s, getCategory('food')).complete, false);
+  assert.equal(pendingItems(s).length, 1, 'empty variable slots are never pending payments');
+  s.values.visa = 20; s.values['visa:debt'] = 1000; s.checked.visa = true;
+  assert.deepEqual(debtSummary(s), { total: 1000, minimums: 20, paid: 20, percent: 100 });
+  assert.equal(s.values['visa:debt'], 1000, 'payment checks do not reduce the recorded principal');
+});
