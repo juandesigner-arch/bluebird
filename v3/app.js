@@ -1,6 +1,6 @@
-import { sections, monthNames } from "./data.mjs?v=v3-data-1";
-import * as calculations from "./calculations.mjs?v=v3-data-1";
-import { createStore } from "./state.mjs?v=v3-data-1";
+import { sections, monthNames } from "./data.js?v=v3-data-2";
+import * as calculations from "./calculations.js?v=v3-data-2";
+import { createStore } from "./state.js?v=v3-data-2";
 
 const store = createStore(() => window.localStorage);
 const state = store.state;

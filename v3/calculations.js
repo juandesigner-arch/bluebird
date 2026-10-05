@@ -1,4 +1,4 @@
-import { sections } from "./data.mjs?v=v3-data-1";
+import { sections } from "./data.js?v=v3-data-2";
 
 export function pendingPayments(state) {
   return sections

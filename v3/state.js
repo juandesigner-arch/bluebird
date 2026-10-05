@@ -1,5 +1,5 @@
-import { sections, monthNames, defaultState } from "./data.mjs?v=v3-data-1";
-import { expenseSections, expenseKindTotals, debtStats, pendingPayments, expenseItemLog, sectionItems, monthlyValue, itemLabel, isChecked } from "./calculations.mjs?v=v3-data-1";
+import { sections, monthNames, defaultState } from "./data.js?v=v3-data-2";
+import { expenseSections, expenseKindTotals, debtStats, pendingPayments, expenseItemLog, sectionItems, monthlyValue, itemLabel, isChecked } from "./calculations.js?v=v3-data-2";
 
 export const storageKey = "blue-bird-v3-expenses-v1";
 const schemaVersion = 2;

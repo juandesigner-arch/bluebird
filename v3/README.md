@@ -4,9 +4,9 @@ Base visual tomada de Blue Bird original. Conserva su CSS, ilustraciones, navega
 
 ## Capa interna
 
-- `data.mjs`: catálogo y estado inicial de V3.
-- `calculations.mjs`: cálculos puros extraídos del original, manteniendo sus reglas actuales.
-- `state.mjs`: almacenamiento protegido, migración con respaldo, fotografías mensuales y protección contra escrituras de pestañas antiguas.
+- `data.js`: catálogo y estado inicial de V3.
+- `calculations.js`: cálculos puros extraídos del original, manteniendo sus reglas actuales.
+- `state.js`: almacenamiento protegido, migración con respaldo, fotografías mensuales y protección contra escrituras de pestañas antiguas.
 - `tests/state.test.mjs`: pruebas con reloj y almacenamiento controlados.
 
 Se conserva la clave `blue-bird-v3-expenses-v1`, con `schemaVersion: 2` y `activeMonth`. Toda migración o reparación crea primero una copia literal `blue-bird-v3-expenses-v1-backup-*`. Si el respaldo falla, se bloquea la escritura. Las migraciones antiguas que sobrescribían deudas se retiraron. Los errores de guardado se avisan mediante un diálogo del navegador, sin añadir controles ni modificar las pantallas.
@@ -26,9 +26,9 @@ Por instrucción del usuario, las instalaciones nuevas cargan los datos exportad
 ```sh
 node --test v3/tests/state.test.mjs
 node --check v3/app.js
-node --check v3/state.mjs
-node --check v3/calculations.mjs
-node --check v3/data.mjs
+node --check v3/state.js
+node --check v3/calculations.js
+node --check v3/data.js
 git diff --check
 ```
 

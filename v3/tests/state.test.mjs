@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore, storageKey } from '../state.mjs';
-import { sections, defaultState } from '../data.mjs';
-import { monthlyValue, expenseSections, pendingPayments, debtStats } from '../calculations.mjs';
+import { createStore, storageKey } from '../state.js';
+import { sections, defaultState } from '../data.js';
+import { monthlyValue, expenseSections, pendingPayments, debtStats } from '../calculations.js';
 const at = (year, month, day = 1) => new Date(year, month - 1, day, 12);
 const memory = (raw = null) => {
   const entries = new Map(raw === null ? [] : [[storageKey, raw]]);
