@@ -386,3 +386,26 @@ button.row { cursor: pointer; }
   .app-shell { min-height: calc(100vh - 36px); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
   .bottom-nav { bottom: 18px; border: 1px solid var(--line); border-radius: 0 0 20px 20px; }
 }
+
+/* Touch targets, keyboard focus and readable form states. */
+:root { --muted: #626873; }
+button, input, select { touch-action: manipulation; }
+input, select { font-size: 16px; }
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.check-target { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: 0 0 44px; cursor: pointer; }
+.check { width: 24px; height: 24px; flex-basis: 24px; margin: 0; }
+.back-button, .delete-button, .emoji-input, .name-input { min-height: 44px; }
+.expense-top { gap: 6px; flex-wrap: wrap; }
+.name-input { flex-basis: 100px; }
+.debt-field { display: block; margin-top: 12px; color: var(--muted); font-size: 13px; }
+.debt-field .money-input { margin-top: 5px; }
+.storage-status { margin: 0; padding: 12px 20px; background: #fff6dd; font-size: 14px; }
+.total-block strong, .detail-total strong { overflow-wrap: anywhere; }
+.row { flex-wrap: wrap; }
+.row-value { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+
+.row-icon { min-width: 0; max-width: 36px; overflow: hidden; white-space: nowrap; }

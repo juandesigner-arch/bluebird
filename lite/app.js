@@ -1,92 +1,22 @@
-const storageKey = "mini-gastos-lite-v3";
+import { categories, monthNames } from "./data.js?v=lite-4";
+import * as calculations from "./calculations.js?v=lite-4";
+import { createStore } from "./state.js?v=lite-4";
 
-const monthNames = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-];
-
-const categories = [
-  {
-    id: "housing", name: "Vivienda", icon: "🏠", color: "#2563eb",
-    items: [{ key: "rent", name: "Arriendo", icon: "🏡", type: "fixed", value: 0 }]
-  },
-  {
-    id: "services", name: "Servicios", icon: "💡", color: "#0891b2",
-    items: [
-      { key: "water", name: "Agua", icon: "💧", type: "fixed", value: 0, factor: 0.5, note: "Se suma 50%" },
-      { key: "power", name: "Luz", icon: "⚡", type: "fixed", value: 0 },
-      { key: "gas", name: "Gas", icon: "🔥", type: "fixed", value: 0 },
-      { key: "internet", name: "Internet", icon: "🌐", type: "fixed", value: 0 },
-      { key: "phone", name: "Celular", icon: "📱", type: "fixed", value: 0 }
-    ]
-  },
-  {
-    id: "transport", name: "Transporte", icon: "🏍️", color: "#ea580c",
-    items: [
-      { key: "parking", name: "Parqueadero", icon: "🅿️", type: "fixed", value: 0 },
-      { key: "soat", name: "SOAT", icon: "🛡️", type: "fixed", value: 0, factor: 1 / 12, note: "Valor anual / 12" },
-      { key: "tech", name: "Tecnomecánica", icon: "📄", type: "fixed", value: 0, factor: 1 / 12, note: "Valor anual / 12" },
-      { key: "gasoline", name: "Gasolina", icon: "⛽", type: "variable", slots: 5 },
-      { key: "maintenance", name: "Mantenimiento", icon: "🔧", type: "variable", slots: 2 }
-    ]
-  },
-  {
-    id: "food", name: "Alimentación", icon: "🛒", color: "#dc2626",
-    items: [
-      { key: "restaurants", name: "Bares, restaurantes y salidas", icon: "🍽️", type: "variable", slots: 5 },
-      { key: "market", name: "Mercado, aseo y hogar", icon: "🛒", type: "variable", slots: 5 },
-      { key: "pet", name: "Mascota", icon: "🐱", type: "variable", slots: 3 }
-    ]
-  },
-  {
-    id: "health", name: "Salud", icon: "❤️", color: "#16a34a",
-    items: [
-      { key: "gym", name: "Gym", icon: "💪", type: "fixed", value: 0 },
-      { key: "medicine", name: "Medicinas / suplementos", icon: "💊", type: "variable", slots: 3 },
-      { key: "wellbeing", name: "Bienestar", icon: "🧠", type: "variable", slots: 3 }
-    ]
-  },
-  {
-    id: "subscriptions", name: "Suscripciones", icon: "📦", color: "#7c3aed",
-    automatic: true,
-    items: [
-      { key: "spotify", name: "Spotify", icon: "🎵", type: "fixed", value: 0, automatic: true },
-      { key: "icloud", name: "iCloud", icon: "☁️", type: "fixed", value: 0, automatic: true },
-      { key: "chatgpt", name: "ChatGPT", icon: "🤖", type: "fixed", value: 0, automatic: true },
-      { key: "adobe", name: "Adobe", icon: "🎨", type: "fixed", value: 0, automatic: true }
-    ]
-  },
-  {
-    id: "business", name: "Negocio", icon: "🚀", color: "#ca8a04",
-    items: [
-      { key: "officeOne", name: "Oficina 1", icon: "🏢", type: "fixed", value: 0 },
-      { key: "officeTwo", name: "Oficina 2", icon: "🏢", type: "fixed", value: 0 }
-    ]
-  },
-  {
-    id: "debt", name: "Deudas", icon: "💳", color: "#334155",
-    items: [
-      { key: "mastercard", name: "MasterCard", icon: "💳", type: "debt", minimum: 0, debt: 0 },
-      { key: "visa", name: "Visa", icon: "💳", type: "debt", minimum: 0, debt: 0 },
-      { key: "credit", name: "Crédito", icon: "🏦", type: "debt", minimum: 0, debt: 0 }
-    ]
-  }
-];
-
-const defaultState = {
-  view: "home",
-  selectedCategory: "food",
-  values: {},
-  slots: {},
-  labels: {},
-  icons: {},
-  checked: {},
-  removed: {},
-  custom: {},
-  history: {}
-};
-
-let state = loadState();
+const moneyFormatter = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+const store = createStore(() => window.localStorage);
+const state = store.state;
+const saveState = () => { store.save(); showStorageStatus(); };
+const syncCurrentMonth = saveState;
+const getCategory = calculations.getCategory;
+const categorySummaries = (...args) => calculations.categorySummaries(state, ...args);
+const pendingItems = (...args) => calculations.pendingItems(state, ...args);
+const activeItems = (...args) => calculations.activeItems(state, ...args);
+const findItem = (...args) => calculations.findItem(state, ...args);
+const itemAmount = (...args) => calculations.itemAmount(state, ...args);
+const slotValues = (...args) => calculations.slotValues(state, ...args);
+const itemName = (...args) => calculations.itemName(state, ...args);
+const itemIcon = (...args) => calculations.itemIcon(state, ...args);
+const monthlyTotal = (...args) => calculations.monthlyTotal(state, ...args);
 const app = document.querySelector("#app");
 const nav = document.querySelector(".bottom-nav");
 
@@ -131,7 +61,7 @@ function renderHome() {
       <div class="list">
         ${pending.length ? pending.slice(0, 6).map((item) => `
           <button class="row" data-category="${item.categoryId}" type="button">
-            <span class="row-icon">${item.icon}</span>
+            <span class="row-icon">${escapeHtml(item.icon)}</span>
             <span class="row-copy"><strong>${escapeHtml(item.name)}</strong><span>${item.category}</span></span>
             <em class="row-value">${money(item.amount)}</em>
           </button>
@@ -185,7 +115,7 @@ function renderDetail() {
       <div><h1>${category.icon} ${category.name}</h1><p>${items.length} gastos</p></div>
       <span></span>
     </header>
-    <div class="detail-total"><span>Total mensual</span><strong data-live-total>${money(total)}</strong><small>${money(total * 12)} al año</small></div>
+    <div class="detail-total"><span>Total mensual</span><strong data-live-total>${money(total)}</strong><small data-live-annual>${money(total * 12)} al año · proyección</small></div>
     <section class="section">
       <div class="list">
         ${items.length ? items.map((item) => renderExpenseItem(category, item)).join("") : `<p class="empty">Sin gastos</p>`}
@@ -208,16 +138,16 @@ function renderExpenseItem(category, item) {
     <div class="expense-item row" data-expense-key="${key}">
       <div class="row-copy">
         <div class="expense-top">
-          ${canCheck ? `<input class="check" data-check="${key}" type="checkbox" ${state.checked[key] ? "checked" : ""} aria-label="Marcar pagado">` : ""}
+          ${canCheck ? `<label class="check-target"><input class="check" data-check="${key}" type="checkbox" ${state.checked[key] ? "checked" : ""} aria-label="Marcar ${escapeAttr(name)} como pagado"></label>` : ""}
           <input class="emoji-input" data-icon="${key}" value="${escapeAttr(icon)}" aria-label="Emoji">
           <input class="name-input" data-label="${key}" value="${escapeAttr(name)}" aria-label="Nombre del gasto">
           ${(isDebt || item.custom) ? `<button class="delete-button" data-delete="${key}" type="button" aria-label="Eliminar">Eliminar</button>` : ""}
         </div>
         ${variable ? renderSlots(item) : isDebt ? renderDebtFields(item) : `
-          <input class="money-input" data-value="${key}" inputmode="numeric" value="${plainNumber(state.values[key] ?? item.value ?? 0)}" aria-label="Valor">
+          <input class="money-input" data-value="${key}" inputmode="numeric" value="${plainNumber(state.values[key] ?? item.value ?? 0)}" aria-label="${escapeAttr(name)}: ${item.note || "valor mensual"} en COP">
         `}
         <div class="item-meta">
-          <span>${variable ? "Variable" : automatic ? "Automático" : isDebt ? "Cuota mínima" : "Fijo"}</span>
+          <span data-item-status="${key}">${itemStatus(category, item)}</span>
           <strong data-item-total="${key}">${money(amount)}</strong>
         </div>
       </div>
@@ -228,14 +158,14 @@ function renderExpenseItem(category, item) {
 function renderSlots(item) {
   const values = slotValues(item);
   return `<div class="slots">${values.map((value, index) => `
-    <input class="slot-input" data-slot-key="${item.key}" data-slot-index="${index}" inputmode="numeric" value="${plainNumber(value)}" placeholder="0" aria-label="Registro ${index + 1}">
+    <input class="slot-input" data-slot-key="${item.key}" data-slot-index="${index}" inputmode="numeric" value="${plainNumber(value)}" placeholder="0" aria-label="${escapeAttr(itemName(item))}: registro ${index + 1} en COP">
   `).join("")}</div>`;
 }
 
 function renderDebtFields(item) {
   return `
-    <input class="money-input" data-value="${item.key}" inputmode="numeric" value="${plainNumber(state.values[item.key] ?? item.minimum ?? 0)}" placeholder="Cuota mínima" aria-label="Cuota mínima">
-    <input class="money-input" data-debt="${item.key}" inputmode="numeric" value="${plainNumber(state.values[`${item.key}:debt`] ?? item.debt ?? 0)}" placeholder="Deuda total" aria-label="Deuda total">
+    <label class="debt-field">Cuota mínima (COP)<input class="money-input" data-value="${item.key}" inputmode="numeric" value="${plainNumber(state.values[item.key] ?? item.minimum ?? 0)}" placeholder="Cuota mínima" aria-label="Cuota mínima"></label>
+    <label class="debt-field">Deuda total (COP)<input class="money-input" data-debt="${item.key}" inputmode="numeric" value="${plainNumber(state.values[`${item.key}:debt`] ?? item.debt ?? 0)}" placeholder="Deuda total" aria-label="Deuda total"></label>
   `;
 }
 
@@ -248,13 +178,13 @@ function renderHistory() {
   app.innerHTML = `
     <header class="page-header"><div><h1>Historial</h1><p>Guardado en este dispositivo</p></div></header>
     <section class="section">
-      ${Object.keys(grouped).length ? Object.entries(grouped).map(([year, logs]) => `
+      ${Object.keys(grouped).length ? Object.entries(grouped).sort(([a], [b]) => b.localeCompare(a)).map(([year, logs]) => `
         <div class="history-year">
           <h2>${year}</h2>
           <div class="list">${logs.map((log) => `
             <div class="row">
               <span class="row-icon">🗓️</span>
-              <span class="row-copy"><strong>${log.month}</strong><span>${log.pending} pendientes</span></span>
+              <span class="row-copy"><strong>${escapeHtml(log.month)}</strong><span>${log.pending} pendientes · ${log.snapshot ? "Detalle conservado" : "Resumen anterior"}</span><span>Actualizado: ${escapeHtml(new Date(log.updatedAt).toLocaleDateString("es-CO"))}</span></span>
               <em class="row-value">${money(log.total)}</em>
             </div>
           `).join("")}</div>
@@ -270,7 +200,7 @@ function renderAdd() {
     <form class="form" data-add-form>
       <label class="field"><span>Categoría</span><select name="category">${categories.map((category) => `<option value="${category.id}">${category.icon} ${category.name}</option>`).join("")}</select></label>
       <label class="field"><span>Emoji</span><input name="icon" value="💸" maxlength="8"></label>
-      <label class="field"><span>Nombre</span><input name="name" required placeholder="Ej. Seguro"></label>
+      <label class="field"><span>Nombre</span><input name="name" maxlength="160" required placeholder="Ej. Seguro"></label>
       <div class="field"><span>Tipo</span><div class="type-control">
         <label><input name="type" value="fixed" type="radio" checked>Fijo</label>
         <label><input name="type" value="variable" type="radio">Variable</label>
@@ -295,6 +225,8 @@ function handleClick(event) {
   const backButton = event.target.closest("[data-back]");
   const deleteButton = event.target.closest("[data-delete]");
 
+  if (categoryButton || backButton || deleteButton) store.ensureMonth();
+
   if (categoryButton) {
     state.selectedCategory = categoryButton.dataset.category;
     state.view = "detail";
@@ -318,12 +250,17 @@ function handleClick(event) {
 function handleChange(event) {
   const check = event.target.closest("[data-check]");
   if (!check) return;
-  state.checked[check.dataset.check] = check.checked;
+  const checked = check.checked;
+  if (store.ensureMonth()) refreshMonthlyInputs();
+  state.checked[check.dataset.check] = checked;
   saveState();
-  render();
+  updateLiveDetail();
 }
 
 function handleInput(event) {
+  if (event.target.matches('[name="name"]')) event.target.setCustomValidity("");
+  if (!event.target.matches("[data-value], [data-debt], [data-slot-key], [data-label], [data-icon]")) return;
+  if (store.ensureMonth()) refreshMonthlyInputs(event.target);
   const value = event.target.closest("[data-value]");
   const debt = event.target.closest("[data-debt]");
   const slot = event.target.closest("[data-slot-key]");
@@ -360,15 +297,20 @@ function handleSubmit(event) {
   const data = new FormData(form);
   const categoryId = String(data.get("category"));
   const type = String(data.get("type"));
-  const key = `custom-${Date.now()}`;
+  if (!String(data.get("name") || "").trim()) { form.elements.name.setCustomValidity("Escribe un nombre."); form.elements.name.reportValidity(); return; }
+  store.ensureMonth();
+  const key = `custom-${crypto.randomUUID()}`;
   const item = {
     key,
     name: String(data.get("name") || "Nuevo gasto").trim(),
     icon: String(data.get("icon") || "💸").trim() || "💸",
     type,
     value: parseMoney(data.get("value")),
-    slots: type === "variable" ? 5 : undefined,
-    custom: true
+    minimum: parseMoney(data.get("value")),
+    debt: 0,
+    slots: 5,
+    custom: true,
+    automatic: false
   };
   (state.custom[categoryId] ||= []).push(item);
   state.values[key] = item.value;
@@ -386,131 +328,41 @@ function updateLiveDetail() {
   const total = activeItems(category).reduce((sum, item) => sum + itemAmount(item), 0);
   const liveTotal = document.querySelector("[data-live-total]");
   if (liveTotal) liveTotal.textContent = money(total);
+  const annual = app.querySelector("[data-live-annual]");
+  if (annual) annual.textContent = `${money(total * 12)} al año · proyección`;
   activeItems(category).forEach((item) => {
     const itemTotal = document.querySelector(`[data-item-total="${item.key}"]`);
     if (itemTotal) itemTotal.textContent = money(itemAmount(item));
+    const status = app.querySelector(`[data-item-status="${item.key}"]`);
+    if (status) status.textContent = itemStatus(category, item);
+    const check = app.querySelector(`[data-check="${item.key}"]`);
+    if (check) check.checked = Boolean(state.checked[item.key]);
   });
-}
-
-function categorySummaries() {
-  return categories.map((category) => {
-    const items = activeItems(category);
-    return {
-      ...category,
-      count: items.length,
-      total: items.reduce((sum, item) => sum + itemAmount(item), 0),
-      pending: items.filter((item) => requiresCheck(category, item) && !state.checked[item.key]).length
-    };
-  });
-}
-
-function pendingItems() {
-  return categories.flatMap((category) => activeItems(category)
-    .filter((item) => requiresCheck(category, item) && !state.checked[item.key])
-    .map((item) => ({
-      categoryId: category.id,
-      category: category.name,
-      name: itemName(item),
-      icon: itemIcon(item),
-      amount: itemAmount(item)
-    })));
-}
-
-function requiresCheck(category, item) {
-  return item.type !== "variable" && !item.automatic && !category.automatic && itemAmount(item) > 0;
-}
-
-function activeItems(category) {
-  return [...category.items, ...(state.custom[category.id] || [])].filter((item) => !state.removed[item.key]);
-}
-
-function getCategory(id) { return categories.find((category) => category.id === id); }
-
-function findItem(key) {
-  for (const category of categories) {
-    const item = activeItems(category).find((candidate) => candidate.key === key);
-    if (item) return item;
-  }
-  return null;
-}
-
-function itemAmount(item) {
-  if (item.type === "variable") return slotValues(item).reduce((sum, value) => sum + Number(value || 0), 0);
-  const value = Number(state.values[item.key] ?? item.minimum ?? item.value ?? 0);
-  return Math.round(value * (item.factor || 1));
-}
-
-function slotValues(item) {
-  const count = Number(item.slots || 5);
-  const saved = state.slots[item.key] || [];
-  return Array.from({ length: count }, (_, index) => Number(saved[index] || 0));
-}
-
-function itemName(item) { return state.labels[item.key] ?? item.name; }
-function itemIcon(item) { return state.icons[item.key] ?? item.icon; }
-function monthlyTotal() {
-  return categories
-    .flatMap((category) => activeItems(category))
-    .reduce((sum, item) => sum + itemAmount(item), 0);
-}
-
-function syncCurrentMonth() {
-  const now = new Date();
-  const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  state.history[key] = {
-    key,
-    year: String(now.getFullYear()),
-    month: monthNames[now.getMonth()],
-    total: monthlyTotal(),
-    pending: pendingItems().length,
-    updatedAt: now.toISOString()
-  };
-  saveState();
 }
 
 function currentMonthLabel() {
-  const now = new Date();
-  return `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+  const [year, month] = state.activeMonth.split("-");
+  return `${monthNames[Number(month) - 1]} ${year}`;
 }
 
 function updateNavigation() {
   document.querySelectorAll(".nav-button").forEach((button) => {
     const activeView = state.view === "detail" ? "expenses" : state.view;
     button.classList.toggle("active", button.dataset.view === activeView);
+    if (button.dataset.view === activeView) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
   });
 }
 
-function loadState() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(storageKey));
-    return parsed ? {
-      ...structuredClone(defaultState),
-      ...parsed,
-      values: { ...defaultState.values, ...(parsed.values || {}) },
-      slots: { ...defaultState.slots, ...(parsed.slots || {}) },
-      labels: { ...defaultState.labels, ...(parsed.labels || {}) },
-      icons: { ...defaultState.icons, ...(parsed.icons || {}) },
-      checked: { ...defaultState.checked, ...(parsed.checked || {}) },
-      removed: { ...defaultState.removed, ...(parsed.removed || {}) },
-      custom: { ...defaultState.custom, ...(parsed.custom || {}) },
-      history: { ...defaultState.history, ...(parsed.history || {}) }
-    } : structuredClone(defaultState);
-  } catch {
-    return structuredClone(defaultState);
-  }
-}
-
-function saveState() { localStorage.setItem(storageKey, JSON.stringify(state)); }
-
 function parseMoney(value) {
   const digits = String(value ?? "").replace(/[^0-9-]/g, "");
-  return Math.max(0, Number.parseInt(digits, 10) || 0);
+  return Math.min(1e12, Math.max(0, Number.parseInt(digits, 10) || 0));
 }
 
 function plainNumber(value) { return String(Math.max(0, Number(value || 0))); }
 
 function money(value) {
-  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(Number(value || 0));
+  return moneyFormatter.format(Number(value || 0));
 }
 
 function escapeHtml(value) {
@@ -525,4 +377,46 @@ function showToast(message) {
   toast.textContent = message;
   document.body.append(toast);
   window.setTimeout(() => toast.remove(), 1400);
+}
+
+function itemStatus(category, item) {
+  if (item.type === "variable") return "Variable";
+  if (item.automatic || category.automatic) return "Automático";
+  const status = itemAmount(item) === 0 ? "Sin valor" : state.checked[item.key] ? "Pagado" : "Pendiente";
+  return `${status}${item.note ? ` · ${item.note}` : ""}`;
+}
+
+function showStorageStatus() {
+  const banner = document.querySelector("#storage-status");
+  banner.textContent = store.error || store.notice;
+  banner.hidden = !banner.textContent;
+}
+
+function checkMonth() {
+  if (document.hidden) return;
+  if (store.ensureMonth()) {
+    saveState();
+    refreshMonthlyInputs();
+    if (state.view === "detail" && app.contains(document.activeElement)) updateLiveDetail();
+    else if (state.view !== "add") render();
+    showToast("Nuevo mes: pagos y registros reiniciados");
+  }
+}
+window.addEventListener("focus", checkMonth);
+document.addEventListener("visibilitychange", checkMonth);
+window.setInterval(checkMonth, 30000);
+window.addEventListener("pagehide", () => store.save());
+window.addEventListener("storage", (event) => {
+  if (event.key === store.key) {
+    store.error = "Los datos cambiaron en otra pestaña. Recarga esta página antes de continuar.";
+    store.blocked = true;
+    showStorageStatus();
+  }
+});
+
+function refreshMonthlyInputs(except = null) {
+  app.querySelectorAll("[data-slot-key]").forEach((input) => {
+    if (input !== except) input.value = "0";
+  });
+  app.querySelectorAll("[data-check]").forEach((input) => { input.checked = false; });
 }

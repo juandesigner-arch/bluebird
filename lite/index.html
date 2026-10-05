@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
     <title>Mini Gastos Lite</title>
-    <link rel="stylesheet" href="styles.css?v=lite-3">
+    <link rel="stylesheet" href="styles.css?v=lite-4">
   </head>
   <body>
     <main class="app-shell">
-      <section id="app" aria-live="polite"></section>
+      <p id="storage-status" class="storage-status" role="alert" hidden></p>
+      <section id="app"></section>
 
       <nav class="bottom-nav" aria-label="Navegacion principal">
         <button class="nav-button active" data-view="home" type="button">
@@ -31,6 +32,6 @@
       </nav>
     </main>
 
-    <script src="app.js?v=lite-3"></script>
+    <script type="module" src="app.js?v=lite-4"></script>
   </body>
 </html>
